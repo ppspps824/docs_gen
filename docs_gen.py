@@ -1,5 +1,3 @@
-import os
-
 import openai
 import pandoc
 import streamlit as st
@@ -8,7 +6,7 @@ st.set_page_config(
     layout="wide",
 )
 
-openai.api_key = os.environ["OPEN_AI_KEY"]
+openai.api_key = st.secrets["OPEN_AI_KEY"]
 
 
 instructions = """
