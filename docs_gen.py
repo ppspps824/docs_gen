@@ -235,19 +235,19 @@ def main():
         },
         {"title": "機能要件 機能", "point": "機能を大区分、中区分、小区分でブレイクダウンする。", "graph": False},
         {"title": "機能要件 画面", "point": "ユーザーとやり取りを行うために必要な画面定義を記載する。", "graph": False},
-        {"title": "機能要件 情報・データ・ログ", "point": "データ項目、処理方法などを記載。", "graph": False},
-        {
-            "title": "機能要件 外部インタフェース",
-            "point": "外部インターフェイスを定義して記載。入力される項目など",
-            "graph": False,
-        },
-        {
-            "title": "非機能要件 ユーザビリティ及びアクセシビリティ",
-            "point": "誰がどう使えればいいのか、定義して記載。",
-            "graph": False,
-        },
+        # {"title": "機能要件 情報・データ・ログ", "point": "データ項目、処理方法などを記載。", "graph": False},
+        # {
+        #     "title": "機能要件 外部インタフェース",
+        #     "point": "外部インターフェイスを定義して記載。入力される項目など",
+        #     "graph": False,
+        # },
+        # {
+        #     "title": "非機能要件 ユーザビリティ及びアクセシビリティ",
+        #     "point": "誰がどう使えればいいのか、定義して記載。",
+        #     "graph": False,
+        # },
         {"title": "非機能要件 性能", "point": "性能に関する事項＋閾値を記載。", "graph": False},
-        {"title": "非機能要件 信頼性", "point": "", "graph": False},
+        # {"title": "非機能要件 信頼性", "point": "", "graph": False},
         # {"title": "非機能要件 拡張性", "point": "", "graph": False},
         # {"title": "非機能要件 継続性", "point": "", "graph": False},
         {"title": "情報セキュリティ アクセス制御方法", "point": "", "graph": False},
@@ -258,13 +258,13 @@ def main():
         # {"title": "情報セキュリティ その他利用制限", "point": "", "graph": False},
         # {"title": "情報セキュリティ 不正接続対策", "point": "", "graph": False},
         # {"title": "情報セキュリティ 外部媒体保存制限（運用ポリシー）", "point": "", "graph": False},
-        {
-            "title": "稼働環境",
-            "point": "環境に関して記載。対応しているブラザなど。要されるセキュリティーに応じて最適な環境を記載",
-            "graph": False,
-        },
+        # {
+        #     "title": "稼働環境",
+        #     "point": "環境に関して記載。対応しているブラザなど。要されるセキュリティーに応じて最適な環境を記載",
+        #     "graph": False,
+        # },
         {"title": "テスト 機能テスト", "point": "", "graph": False},
-        {"title": "テスト ユーザビリティテスト", "point": "", "graph": False},
+        # {"title": "テスト ユーザビリティテスト", "point": "", "graph": False},
         # {"title": "テスト 負荷テスト", "point": "", "graph": False},
         # {"title": "テスト セキュリティテスト", "point": "", "graph": False},
         # {"title": "テスト 担保する範囲とテスト範囲の定義", "point": "", "graph": False},
@@ -288,6 +288,7 @@ def main():
     if submit:
         submit = False
 
+        all_text = ""
         for value, content_info in zip(contents_text, contents):
             text_place = st.empty()
             graph_place = st.empty()
@@ -304,10 +305,16 @@ def main():
                 else:
                     text_place.write(title + result_text)
 
+                all_text += result_text
+
         doc = pandoc.read(result_text)
         docfile = pandoc.write(doc, format="docx")
 
-        st.download_button("Word形式でダウンロード", data=docfile, mime="application/msword")
+        st.download_button(
+            "Word形式でダウンロード",
+            data=docfile,
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+        )
 
 
 main()
