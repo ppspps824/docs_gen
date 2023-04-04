@@ -307,7 +307,7 @@ def main():
 
                 all_text += result_text
 
-        doc = pandoc.read(result_text)
+        doc = pandoc.read(all_text)
         docfile = pandoc.write(doc, format="docx")
 
         st.download_button(
