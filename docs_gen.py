@@ -29,6 +29,7 @@ Based on the information entered, output the document in Markdown format by fait
 - Do not output the title of the indicated content, but only the text.
 - Insert line breaks and spaces as appropriate to ensure correct display in markdown format.
 - Responses should be limited to 300 characters.
+- {{Answer in Japanese}}
 """
 # instructions = """
 # [実行内容]
@@ -323,7 +324,7 @@ def main():
     ]
 
     contents_text = [
-        f'以下の要望を実現するために、要件定義書に記載する{content["title"]}部分のみを日本語で作成してください。{content["point"]}'
+        f'以下の要望を実現するために、要件定義書に記載する{content["title"]}部分のみを{{{{日本語で作成}}}}してください。\n[注意点]\n{content["point"]}'
         for content in contents
     ]
 
