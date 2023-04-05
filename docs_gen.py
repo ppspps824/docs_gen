@@ -1,5 +1,6 @@
 import openai
 import pandoc
+import requests
 import streamlit as st
 
 st.set_page_config(
@@ -7,27 +8,49 @@ st.set_page_config(
 )
 
 openai.api_key = st.secrets["OPEN_AI_KEY"]
+DEEPL_APY_KEY = st.secrets["DEEPL_APY_KEY"]
 
 
 instructions = """
-[実行内容]
-ユーザーの要望を実現するためのシステム要件定義書を作成します。
-入力された情報をもとに、以下の注意点に忠実に従ってMarkdown形式で出力してください。
+[Execution Description]
+Create a system requirement definition document to realize user requirements.
+Based on the information entered, output the document in Markdown format by faithfully following the notes below.
 
-[注意点]
-プロのシステムエンジニアとしてふるまう。
-入力された情報をそのまま出力しない。
-そのままドキュメントとして使用できる形式で出力する。
-指示にない範囲の内容について回答しない。
-段階的、論理的に考えて答えを出す。
-各項目は5W1Hを明確に記載する。
-要件が不明確な場合は、一般的な内容にする。
-システム設計が可能なレベルで詳細に記述すること。
-図はGraphviz形式で作成し、その他のコメントなどは含めない。
-指示された内容のタイトルは出力せず本文のみを出力する
-markdown形式で正しく表示されるように適宜改行やスペースを挿入する。
-回答は300字以内とする。
+[Notes]
+Act as a professional system engineer.
+Do not output the input information.
+Output in a format that can be used as a document as it is.
+Do not answer questions about content not covered in the instructions.
+Give answers in a step-by-step, logical manner.
+Each item should clearly state the 5W1H.
+If requirements are unclear, make them general.
+Describe in detail at a level that enables system design.
+Figures should be prepared in Graphviz format, and no other comments should be included.
+Do not output the title of the indicated content, but only the text.
+Insert line breaks and spaces as appropriate to ensure correct display in markdown format.
+Responses should be limited to 300 characters.
+Answers should be written in Japanese.
 """
+# instructions = """
+# [実行内容]
+# ユーザーの要望を実現するためのシステム要件定義書を作成します。
+# 入力された情報をもとに、以下の注意点に忠実に従ってMarkdown形式で出力してください。
+
+# [注意点]
+# プロのシステムエンジニアとしてふるまう。
+# 入力された情報は出力しない。
+# そのままドキュメントとして使用できる形式で出力する。
+# 指示にない範囲の内容について回答しない。
+# 段階的、論理的に考えて答えを出す。
+# 各項目は5W1Hを明確に記載する。
+# 要件が不明確な場合は、一般的な内容にする。
+# システム設計が可能なレベルで詳細に記述すること。
+# 図はGraphviz形式で作成し、その他のコメントなどは含めない。
+# 指示された内容のタイトルは出力せず本文のみを出力する
+# markdown形式で正しく表示されるように適宜改行やスペースを挿入する。
+# 回答は300字以内とする。
+# 日本語で回答する。
+# """
 
 
 def chat(text, messages=None, settings="", max_tokens=1000):
@@ -52,6 +75,22 @@ def chat(text, messages=None, settings="", max_tokens=1000):
             content = chunk["choices"][0]["delta"].get("content")
             if content:
                 yield content
+
+
+def transelate(text, source_lang="JA", target_lang="EN"):
+    # パラメータの指定
+    params = {
+        "auth_key": DEEPL_APY_KEY,
+        "text": text,
+        "source_lang": source_lang,  # 翻訳対象の言語
+        "target_lang": target_lang,  # 翻訳後の言語
+    }
+
+    # リクエストを投げる
+    request = requests.post("https://api-free.deepl.com/v2/translate", data=params)
+    result = request.json()
+
+    return result
 
 
 def main():
@@ -292,14 +331,17 @@ def main():
     if submit:
         submit = False
 
+        transe_input = transelate(user_input_text, "JA", "EN")
+
         all_text = ""
         for value, content_info in zip(contents_text, contents):
+            transe_value = transelate(value, "JA", "EN")
             text_place = st.empty()
             graph_place = st.empty()
             result_text = ""
             title = "##  " + content_info["title"] + "\n\n"
             for talk in chat(
-                f"{value}/n/n{user_input_text}",
+                f"{transe_value}/n/n{transe_input}",
                 settings=instructions,
             ):
                 result_text += talk
