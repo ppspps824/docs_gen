@@ -305,7 +305,7 @@ def main():
                 else:
                     text_place.write(title + result_text)
 
-                all_text += result_text
+            all_text += result_text
 
         doc = pandoc.read(all_text)
         docfile = pandoc.write(doc, format="docx")
