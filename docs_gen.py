@@ -324,7 +324,7 @@ def main():
     ]
 
     contents_text = [
-        f'以下の要望を実現するために、要件定義書に記載する{content["title"]}部分のみを{{{{日本語で作成}}}}してください。\n[注意点]\n{content["point"]}'
+        f'以下の要望を実現するために、要件定義書に記載する{content["title"]}部分のみを日本語で作成してください。\n[注意点]\n{content["point"]}'
         for content in contents
     ]
 
@@ -335,7 +335,7 @@ def main():
 
         all_text = ""
         for value, content_info in zip(contents_text, contents):
-            transe_value = transelate(value, "JA", "EN")
+            transe_value = value
             text_place = st.empty()
             graph_place = st.empty()
             result_text = ""
