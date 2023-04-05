@@ -51,7 +51,7 @@ def chat(text, messages=None, settings="", max_tokens=1000):
 
 
 def main():
-    st.write("# 要件定義書メーカー")
+    st.write("# ドキュメントジェネレーター")
 
     st.write("要望を入力してください。すべて欄を埋める必要はありません。")
     user_input = [
@@ -233,8 +233,8 @@ def main():
             "point": "",
             "graph": False,
         },
-        {"title": "機能要件 機能", "point": "機能を大区分、中区分、小区分でブレイクダウンする。", "graph": False},
-        {"title": "機能要件 画面", "point": "ユーザーとやり取りを行うために必要な画面定義を記載する。", "graph": False},
+        # {"title": "機能要件 機能", "point": "機能を大区分、中区分、小区分でブレイクダウンする。", "graph": False},
+        # {"title": "機能要件 画面", "point": "ユーザーとやり取りを行うために必要な画面定義を記載する。", "graph": False},
         # {"title": "機能要件 情報・データ・ログ", "point": "データ項目、処理方法などを記載。", "graph": False},
         # {
         #     "title": "機能要件 外部インタフェース",
@@ -246,11 +246,11 @@ def main():
         #     "point": "誰がどう使えればいいのか、定義して記載。",
         #     "graph": False,
         # },
-        {"title": "非機能要件 性能", "point": "性能に関する事項＋閾値を記載。", "graph": False},
+        # {"title": "非機能要件 性能", "point": "性能に関する事項＋閾値を記載。", "graph": False},
         # {"title": "非機能要件 信頼性", "point": "", "graph": False},
         # {"title": "非機能要件 拡張性", "point": "", "graph": False},
         # {"title": "非機能要件 継続性", "point": "", "graph": False},
-        {"title": "情報セキュリティ アクセス制御方法", "point": "", "graph": False},
+        # {"title": "情報セキュリティ アクセス制御方法", "point": "", "graph": False},
         # {"title": "情報セキュリティ アクセス認証方法", "point": "", "graph": False},
         # {"title": "情報セキュリティ データの暗号化", "point": "", "graph": False},
         # {"title": "情報セキュリティ ウィルス対策", "point": "", "graph": False},
@@ -263,7 +263,7 @@ def main():
         #     "point": "環境に関して記載。対応しているブラザなど。要されるセキュリティーに応じて最適な環境を記載",
         #     "graph": False,
         # },
-        {"title": "テスト 機能テスト", "point": "", "graph": False},
+        # {"title": "テスト 機能テスト", "point": "", "graph": False},
         # {"title": "テスト ユーザビリティテスト", "point": "", "graph": False},
         # {"title": "テスト 負荷テスト", "point": "", "graph": False},
         # {"title": "テスト セキュリティテスト", "point": "", "graph": False},
@@ -272,12 +272,12 @@ def main():
         # {"title": "テスト 完了基準", "point": "", "graph": False},
         # {"title": "テスト 使用するツール", "point": "", "graph": False},
         # {"title": "テスト テストデータ", "point": "どのようなデータか、どのように用意するのか", "graph": False},
-        {"title": "移行要件 移行のプロセス、タイミング", "point": "", "graph": False},
+        # {"title": "移行要件 移行のプロセス、タイミング", "point": "", "graph": False},
         # {"title": "運用要件 教育", "point": "運用・利用・活用方法の教育について", "graph": False},
         # {"title": "運用要件 運用", "point": "運用体制、運用業務", "graph": False},
-        {"title": "運用要件 保守", "point": "", "graph": False},
-        {"title": "予算", "point": "各工程で必要となる費用を算出して記載", "graph": False},
-        {"title": "スケジュール", "point": "表形式で作成", "graph": False},
+        # {"title": "運用要件 保守", "point": "", "graph": False},
+        # {"title": "予算", "point": "各工程で必要となる費用を算出して記載", "graph": False},
+        # {"title": "スケジュール", "point": "表形式で作成", "graph": False},
     ]
 
     contents_text = [
