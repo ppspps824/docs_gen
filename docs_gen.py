@@ -17,19 +17,18 @@ Create a system requirement definition document to realize user requirements.
 Based on the information entered, output the document in Markdown format by faithfully following the notes below.
 
 [Notes]
-Act as a professional system engineer.
-Do not output the input information.
-Output in a format that can be used as a document as it is.
-Do not answer questions about content not covered in the instructions.
-Give answers in a step-by-step, logical manner.
-Each item should clearly state the 5W1H.
-If requirements are unclear, make them general.
-Describe in detail at a level that enables system design.
-Figures should be prepared in Graphviz format, and no other comments should be included.
-Do not output the title of the indicated content, but only the text.
-Insert line breaks and spaces as appropriate to ensure correct display in markdown format.
-Responses should be limited to 300 characters.
-Answers should be written in Japanese.
+- Act as a professional system engineer.
+- Do not output the input information.
+- Output in a format that can be used as a document as it is.
+- Do not answer questions about content not covered in the instructions.
+- Give answers in a step-by-step, logical manner.
+- Each item should clearly state the 5W1H.
+- If requirements are unclear, make them general.
+- Describe in detail at a level that enables system design.
+- Figures should be prepared in Graphviz format, and no other comments should be included.
+- Do not output the title of the indicated content, but only the text.
+- Insert line breaks and spaces as appropriate to ensure correct display in markdown format.
+- Responses should be limited to 300 characters.
 """
 # instructions = """
 # [実行内容]
@@ -324,7 +323,7 @@ def main():
     ]
 
     contents_text = [
-        f'以下の要望を実現するために、要件定義書に記載する{content["title"]}部分のみを詳細に作成してください。{content["point"]}'
+        f'以下の要望を実現するために、要件定義書に記載する{content["title"]}部分のみを日本語で作成してください。{content["point"]}'
         for content in contents
     ]
 
