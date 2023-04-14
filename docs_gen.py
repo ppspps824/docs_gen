@@ -54,7 +54,7 @@ def main():
         result_text = ""
         message = "\n".join(st.session_state["alltext"])
         old_place = st.empty()
-        old_place.text(message)
+        old_place.write(message)
         st.write("#### AI:")
         new_place = st.empty()
 
