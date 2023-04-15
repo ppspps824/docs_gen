@@ -5,10 +5,8 @@ st.set_page_config(
     layout="wide",
 )
 
-openai.api_key = st.secrets["OPEN_AI_KEY"]
-
-
-instructions = "Let's think step by step"
+# openai.api_key = st.secrets["OPEN_AI_KEY"]
+openai.api_key = "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"
 
 
 def chat(text, messages=None, settings="", max_tokens=1000):
@@ -40,10 +38,24 @@ def main():
     if "alltext" not in st.session_state:
         st.session_state["alltext"] = []
 
-    st.write("# ChatGPT Clone")
+    instructions = """
+    Let's think step by step
+    """
+
+    deep_text = """
+
+    To achieve the best results with this task
+    If you need additional information, please ask questions.
+    """
+
+    st.write("# 👨🏼‍🤝‍👨🏼Clone GPT ")
 
     with st.sidebar:
         inputtext = st.text_area("テキストを入力")
+        deep = st.checkbox("Deep", help="情報が不足する場合、質問を返します。")
+
+    if deep:
+        instructions += deep_text
 
     if len(st.session_state["alltext"]) > 6:
         del st.session_state["alltext"][0:1]
