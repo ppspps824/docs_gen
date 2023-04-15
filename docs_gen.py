@@ -5,8 +5,7 @@ st.set_page_config(
     layout="wide",
 )
 
-# openai.api_key = st.secrets["OPEN_AI_KEY"]
-openai.api_key = "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"
+openai.api_key = st.secrets["OPEN_AI_KEY"]
 
 
 def chat(text, messages=None, settings="", max_tokens=1000):
