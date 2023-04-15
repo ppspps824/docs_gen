@@ -1,11 +1,15 @@
 import openai
 import streamlit as st
+from plantweb.render import render
 
 st.set_page_config(
     layout="wide",
 )
 
-openai.api_key = st.secrets["OPEN_AI_KEY"]
+try:
+    openai.api_key = st.secrets["OPEN_AI_KEY"]
+except:
+    pass
 
 
 def chat(text, messages=None, settings="", max_tokens=1000):
@@ -32,6 +36,36 @@ def chat(text, messages=None, settings="", max_tokens=1000):
                 yield content
 
 
+def get_graph_text(text):
+    result = ""
+    st = text.find("digraph")
+    end = text.find("}")
+    result = text[st : end + 1]
+
+    return result
+
+
+def get_uml_text(text):
+    result = ""
+    st = text.find("@startuml")
+    end = text.find("@enduml")
+
+    umltext = text[st : end + 7]
+
+    if umltext:
+        result = render(
+            umltext,
+            engine="plantuml",
+            format="png",
+            cacheopts={"use_cache": False},
+        )
+        make = True
+    else:
+        make = False
+
+    return result, make
+
+
 def main():
 
     if "alltext" not in st.session_state:
@@ -39,6 +73,7 @@ def main():
 
     instructions = """
     Let's think step by step
+    回答は日本語で
     """
 
     deep_text = """
@@ -76,6 +111,15 @@ def main():
             result_text += talk
             new_place.write(result_text)
         st.session_state["alltext"].append(f"\n### AI:\n {result_text}")
+
+        graphtext = get_graph_text(result_text)
+        umltext, make = get_uml_text(result_text)
+
+        if graphtext:
+            st.graphviz_chart(graphtext)
+
+        if make:
+            st.image(umltext[0])
 
 
 main()
