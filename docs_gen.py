@@ -2,9 +2,7 @@ import openai
 import streamlit as st
 from plantweb.render import render
 
-st.set_page_config(
-    layout="wide",
-)
+st.set_page_config(page_title="Clone GPT", page_icon="👨🏼‍🤝‍👨🏼", layout="wide")
 
 try:
     openai.api_key = st.secrets["OPEN_AI_KEY"]
@@ -67,6 +65,13 @@ def get_uml_text(text):
 
 
 def main():
+    hide_streamlit_style = """
+                <style>
+                #MainMenu {visibility: hidden;}
+                footer {visibility: hidden;}
+                </style>
+                """
+    st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
     if "alltext" not in st.session_state:
         st.session_state["alltext"] = []
