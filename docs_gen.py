@@ -78,25 +78,23 @@ def main():
 
     instructions = """
     Let's think step by step
-    回答は日本語で
-    """
-
-    deep_text = """
-
     To achieve the best results with this task
     If you need additional information, please ask questions.
+    Answer in Japanese.
     """
 
     st.write("# 👨🏼‍🤝‍👨🏼Clone GPT ")
 
     with st.sidebar:
         inputtext = st.text_area("テキストを入力")
-        deep = st.checkbox("Deep", help="情報が不足する場合、質問を返します。")
+        image_url = st.text_input("画像のURLを入力")
+        if image_url:
+            st.image(image_url, use_column_width="always")
 
-    if deep:
-        instructions += deep_text
+    if image_url:
+        instructions += f"\n ![source]({image_url})"
 
-    if len(st.session_state["alltext"]) > 6:
+    if len(st.session_state["alltext"]) > 10:
         del st.session_state["alltext"][0:1]
 
     if inputtext:
@@ -114,8 +112,9 @@ def main():
             settings=instructions,
         ):
             result_text += talk
-            new_place.write(result_text)
-        st.session_state["alltext"].append(f"\n### AI:\n {result_text}")
+            clean_text = result_text.replace("#", "").replace("AI:\n", "")
+            new_place.write(clean_text)
+        st.session_state["alltext"].append(f"\n#### AI:\n {clean_text}")
 
         graphtext = get_graph_text(result_text)
         umltext, make = get_uml_text(result_text)
