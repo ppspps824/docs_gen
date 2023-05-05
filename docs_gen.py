@@ -20,7 +20,7 @@ def chat(text, messages=None, settings="", max_tokens=1000):
 
     # APIを叩く、streamをTrueに
     resp = openai.ChatCompletion.create(
-        model="gpt-3.5-turbo",
+        model="gpt-4",
         messages=messages,
         max_tokens=max_tokens,
         stream=True,
