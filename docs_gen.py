@@ -86,14 +86,23 @@ def main():
 
     if submit:
         if input_gen_length:
-            gen_length = f"- 文字数は必ず{input_gen_length}文字前後とする。これを守るために説明を省略しても構わない。"
+            gen_length = f"- 文字数は必ず{input_gen_length}文字前後とする。これを守るために前述した前提に従わなくても構わない。"
         else:
             gen_length = ""
 
         instructions = f"""
 あなたは{inputtext}におけるベテランの研修講師です。
 {inputtext}について初学者～中級者が実務で通用するレベルで知識をつけられる研修資料を作成してください。
-作成に当たっては以下に厳密に従ってください。特に文字数の指定には必ず従ってください。
+作成に当たっては以下に厳密に従ってください。
+- 指示の最後に「続きを出力」と送られた場合は、指示の続きから出力する。
+    - 例) 
+        指示：りんごは赤く甘い、一般 続きを出力
+        出力：的な家庭でよく食べられている果物です。
+- 最後まで出力が完了している場合は「続きを出力」と指示された場合でも「出力完了」と返す。
+    - 例)
+        出力：上記のような手法を試してみてください。
+        指示：上記のような手法を試してみてください。続きを出力
+        出力：出力完了
 - step by stepで複数回検討を行い、その中で一番優れていると思う結果を出力する。
 - サンプルではなくそのまま利用できる品質とする。
 - 説明の内容も省略しない。
@@ -106,8 +115,6 @@ def main():
 - 各種情報には出典を明記する。
 - セクションごとに理解度を確認する簡単なクイズを作成する。
 - 生成物以外は出力しない（例えば生成物に対するコメントや説明など）
-- 指示の最後に「続きを出力」と送られた場合は、指示の続きから出力する。
-- 最後まで出力が完了している場合は「続きを出力」と指示された場合でも「出力完了」と返す。
 {gen_length}
     """
 
@@ -144,15 +151,6 @@ def main():
                             result_text += talk
                             new_place.text(result_text)
                         st.session_state["alltext"].append(result_text)
-
-                        graphtext = get_graph_text(result_text)
-                        umltext, make = get_uml_text(result_text)
-
-                        if graphtext:
-                            st.graphviz_chart(graphtext)
-
-                        if make:
-                            st.image(umltext[0])
 
                         is_init = False
 
