@@ -120,9 +120,6 @@ def main():
 {gen_length}
     """
 
-        if len(st.session_state["alltext"]) > 10:
-            del st.session_state["alltext"][0:1]
-
         if inputtext:
             st.session_state["alltext"].append(inputtext)
             result_text = ""
