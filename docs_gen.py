@@ -1,7 +1,7 @@
+import time
+
 import openai
 import streamlit as st
-from plantweb.render import render
-import time
 
 
 def chat(text, settings, max_tokens, model):
@@ -154,16 +154,17 @@ def main():
             status_place.write("生成完了！")
 
 
-st.set_page_config(page_title="LearnMateAI", page_icon="📚", layout="wide")
+if __name__ == "__main__":
+    st.set_page_config(page_title="LearnMateAI", page_icon="📚", layout="wide")
 
-hide_streamlit_style = """
-            <style>
-            #MainMenu {visibility: hidden;}
-            footer {visibility: hidden;}
-            </style>
-            """
-st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+    hide_streamlit_style = """
+                <style>
+                #MainMenu {visibility: hidden;}
+                footer {visibility: hidden;}
+                </style>
+                """
+    st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-# openai.api_key = st.secrets["OPEN_AI_KEY"]
-openai.api_key = "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"
-main()
+    openai.api_key = st.secrets["OPEN_AI_KEY"]
+
+    main()
