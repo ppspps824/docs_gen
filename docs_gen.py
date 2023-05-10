@@ -14,6 +14,7 @@ def chat(text, messages=None, settings="", max_tokens=4096, model="gpt-4"):
 
     # APIを叩く、streamをTrueに
     while True:
+        error_count = 0
         try:
             resp = openai.ChatCompletion.create(
                 model=model,
@@ -29,7 +30,11 @@ def chat(text, messages=None, settings="", max_tokens=4096, model="gpt-4"):
                     if content:
                         yield content
         except:
-            time.sleep(3)
+            if error_count < 3:
+                time.sleep(3)
+            else:
+                st.error("エラーが発生しました。再実行すると解消する可能性があります。")
+                st.stop
 
 
 def get_graph_text(text):
@@ -82,14 +87,14 @@ def main():
 
     if submit:
         if input_gen_length:
-            gen_length = f"- 文字数は必ず{input_gen_length}文字前後とする。"
+            gen_length = f"- 文字数は必ず{input_gen_length}文字前後とする。これを守るために説明を省略しても構わない。"
         else:
             gen_length = ""
 
         instructions = f"""
 あなたは{inputtext}におけるベテランの研修講師です。
 {inputtext}について初学者～中級者が実務で通用するレベルで知識をつけられる研修資料を作成してください。
-作成に当たっては以下に厳密に従ってください。
+作成に当たっては以下に厳密に従ってください。特に文字数の指定には必ず従ってください。
 - step by stepで複数回検討を行い、その中で一番優れていると思う結果を出力する。
 - サンプルではなくそのまま利用できる品質とする。
 - 説明の内容も省略しない。
