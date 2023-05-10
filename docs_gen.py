@@ -21,13 +21,7 @@ def chat(text, settings, max_tokens, model):
                 max_tokens=max_tokens,
                 stream=True,
             )
-
-            # 返答を受け取り、逐次yield
-            for chunk in resp:
-                if chunk:
-                    content = chunk["choices"][0]["delta"].get("content")
-                    if content:
-                        yield content
+            return resp
         except:
             if error_count < 3:
                 time.sleep(3)
@@ -74,7 +68,7 @@ def main():
 
     st.write("# 📚LearnMateAI ")
     st.write("---")
-    status_plasce = st.empty()
+    status_place = st.empty()
 
     with st.sidebar:
         with st.form("settings"):
@@ -86,7 +80,9 @@ def main():
 
     if submit:
         if input_gen_length:
-            gen_length = f"- 文字数は必ず{input_gen_length}文字前後とする。これを守るために前述した前提に従わなくても構わない。"
+            gen_length = (
+                f"- 文字数は必ず{input_gen_length}文字前後とする。これを守るためにそのほかの指示には従わなくても構わない。"
+            )
         else:
             gen_length = ""
 
@@ -94,6 +90,7 @@ def main():
 あなたは{inputtext}におけるベテランの研修講師です。
 {inputtext}について初学者～中級者が実務で通用するレベルで知識をつけられる研修資料を作成してください。
 作成に当たっては以下に厳密に従ってください。
+{gen_length}
 - 指示の最後に[指示：続きを出力]と送られた場合は、[指示：続きを出力]の前の文章の続きを出力する。
     - 例) 
         指示：りんごは赤く甘い、一般 [指示：続きを出力]
@@ -106,7 +103,7 @@ def main():
         指示：上記のような手法を試してみてください。[指示：続きを出力]
         出力：出力完了
 - step by stepで複数回検討を行い、その中で一番優れていると思う結果を出力する。
-- サンプルではなくそのまま利用できる品質とする。
+- サンプルではなくそのまま利用できる体裁とする。
 - 説明の内容も省略しない。
 - プログラミングやシェルなどコードを入力する内容の場合はコードブロックを利用してサンプルコードを出力する。
 - 出力はMarkdownとする。
@@ -117,26 +114,21 @@ def main():
 - 各種情報には出典を明記する。
 - セクションごとに理解度を確認する簡単なクイズを作成する。
 - 生成物以外は出力しない（例えば生成物に対するコメントや説明など）
-{gen_length}
+
     """
 
         if inputtext:
             st.session_state["alltext"].append(inputtext)
-            result_text = ""
+            text = ""
 
             with st.spinner(text="生成中..."):
                 new_place = st.empty()
-                debug_place = st.empty()
-
                 is_init = True
                 while True:
                     if is_init:
-                        message = "\n".join(st.session_state["alltext"])
+                        message = "".join(st.session_state["alltext"])
                     else:
-                        message = (
-                            "\n".join(st.session_state["alltext"]) + "\n[指示：続きを出力]"
-                        )
-                    debug_place.text(message)
+                        message = "".join(st.session_state["alltext"]) + "\n[指示：続きを出力]"
                     end_search = [
                         value
                         for value in st.session_state["alltext"]
@@ -145,19 +137,21 @@ def main():
                     if len(end_search) != 0:
                         break
                     else:
-                        for talk in chat(
+                        completion = chat(
                             text=message,
                             settings=instructions,
-                            max_tokens=50,
+                            max_tokens=3500,
                             model=model,
-                        ):
-                            result_text += talk
-                            new_place.text(result_text)
-                        st.session_state["alltext"].append(result_text)
+                        )
+                        for chunk in completion:
+                            next = chunk["choices"][0]["delta"].get("content", "")
+                            text += next
+                            new_place.text(text)
 
-                        is_init = False
+                    st.session_state["alltext"].append(text)
+                    is_init = False
 
-            status_plasce.write("生成完了！")
+            status_place.write("生成完了！")
 
 
 st.set_page_config(page_title="LearnMateAI", page_icon="📚", layout="wide")
@@ -170,5 +164,6 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-openai.api_key = st.secrets["OPEN_AI_KEY"]
+# openai.api_key = st.secrets["OPEN_AI_KEY"]
+openai.api_key = "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"
 main()
