@@ -3,7 +3,7 @@ import streamlit as st
 from plantweb.render import render
 
 
-def chat(text, messages=None, settings="", max_tokens=1000, model="gpt-4"):
+def chat(text, messages=None, settings="", max_tokens=4096, model="gpt-4"):
 
     # やり取りの管理
     messages = messages if messages is not None else []
@@ -61,55 +61,71 @@ def main():
     if "alltext" not in st.session_state:
         st.session_state["alltext"] = []
 
-    instructions = """
-    Let's think step by step
-    To achieve the best results with this task
-    If you need additional information, please ask questions.
-    Answer in Japanese.
-    """
+    model = "gpt-4"
 
-    st.write("# 👨🏼‍🤝‍👨🏼Clone GPT ")
+    st.write("# 📚LearnMateAI ")
+    st.write("---")
+    status_plasce = st.empty()
 
     with st.sidebar:
-        model = st.selectbox("モデルを選択", ["gpt-4", "gpt-4-32k", "gpt-3.5-turbo"])
-        inputtext = st.text_area("テキストを入力")
-        image_url = st.text_input("画像のURLを入力")
-        if image_url:
-            st.image(image_url, use_column_width="always")
+        inputtext = st.text_input("テーマを入力")
 
-    if image_url:
-        instructions += f"\n ![source]({image_url})"
+    instructions = f"""
+あなたは{inputtext}におけるベテランの研修講師です。
+{inputtext}について初学者～中級者が実務で通用するレベルで知識をつけられる研修資料を作成してください。
+作成に当たっては以下に厳密に従ってください。
+- step by stepで複数回検討を行い、その中で一番優れていると思う結果を出力する。
+- サンプルではなくそのまま利用できる品質とする。
+- 説明の内容も省略しない。
+- プログラミングやシェルなどコードを入力する内容の場合はコードブロックを利用してサンプルコードを出力する。
+- 出力はMarkdownとする。
+- 各種コンテンツはできる限り詳細に記載する。
+- 一般的な知識に加えて少し掘り下げたトリビアや豆知識を織り交ぜる。
+- コンテンツの中盤ではブレイクタイムとして{inputtext}にまつわるエピソードやジョークを織り交ぜる。
+- 画像や絵文字、アイコン等を使用し視覚的に興味を引く工夫を行う。
+- 画像はUnsplashより取得するか、SVG形式で生成する。
+- 各種情報には出典を明記する。
+- セクションごとに理解度を確認する簡単なクイズを作成する。
+- 生成物以外は出力しない（例えば生成物に対するコメントや説明など）
+- 出力の制限によって途中で生成物が途切れた場合は「続きを出力」と送るので、続きを出力する。
+- 最後まで出力が完了している場合は「続きを出力」と送られた場合でも「出力完了」と返す。
+    """
 
     if len(st.session_state["alltext"]) > 10:
         del st.session_state["alltext"][0:1]
 
     if inputtext:
-        st.session_state["alltext"].append(f"\n#### You:\n{inputtext}")
-
+        st.session_state["alltext"].append(inputtext)
         result_text = ""
-        message = "\n".join(st.session_state["alltext"])
-        old_place = st.empty()
-        old_place.write(message)
-        st.write("#### AI:")
-        new_place = st.empty()
 
-        for talk in chat(message, settings=instructions, model=model):
-            result_text += talk
-            clean_text = result_text.replace("#", "").replace("AI:\n", "")
-            new_place.write(clean_text)
-        st.session_state["alltext"].append(f"\n#### AI:\n {clean_text}")
+        with st.spinner(text="生成中..."):
+            new_place = st.empty()
+            while True:
+                message = "\n".join(st.session_state["alltext"])
+                end_search = [
+                    value for value in st.session_state["alltext"] if "出力完了" in value
+                ]
+                if len(end_search) != 0:
+                    break
+                else:
+                    for talk in chat(message, settings=instructions, model=model):
+                        result_text += talk
+                        new_place.text(result_text)
+                    st.session_state["alltext"].append(result_text)
 
-        graphtext = get_graph_text(result_text)
-        umltext, make = get_uml_text(result_text)
+                    graphtext = get_graph_text(result_text)
+                    umltext, make = get_uml_text(result_text)
 
-        if graphtext:
-            st.graphviz_chart(graphtext)
+                    if graphtext:
+                        st.graphviz_chart(graphtext)
 
-        if make:
-            st.image(umltext[0])
+                    if make:
+                        st.image(umltext[0])
+
+        status_plasce.write("生成完了！")
 
 
-st.set_page_config(page_title="Clone GPT", page_icon="👨🏼‍🤝‍👨🏼", layout="wide")
+st.set_page_config(page_title="LearnMateAI", page_icon="📚", layout="wide")
 
 hide_streamlit_style = """
             <style>
@@ -119,8 +135,5 @@ hide_streamlit_style = """
             """
 st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-try:
-    openai.api_key = st.secrets["OPEN_AI_KEY"]
-    main()
-except:
-    st.write("API-KEYを検出できませんでした。")
+openai.api_key = st.secrets["OPEN_AI_KEY"]
+main()
