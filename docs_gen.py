@@ -80,9 +80,7 @@ def main():
 
     if submit:
         if input_gen_length:
-            gen_length = (
-                f"- 文字数は必ず{input_gen_length}文字前後とする。これを守るためにそのほかの指示には従わなくても構わない。"
-            )
+            gen_length = f"- 過去のやりとりを含めて文字数は必ず{input_gen_length}文字前後とする。これを守るためにそのほかの指示には従わなくても構わない。"
         else:
             gen_length = ""
 
@@ -134,6 +132,7 @@ def main():
                         for value in st.session_state["alltext"]
                         if "出力完了" in value
                     ]
+
                     if len(end_search) != 0:
                         break
                     else:
@@ -146,12 +145,13 @@ def main():
                         for chunk in completion:
                             next = chunk["choices"][0]["delta"].get("content", "")
                             text += next
+                            text = text.replace("[指示：続きを出力]", "").replace("出力完了", "")
                             new_place.text(text)
 
                     st.session_state["alltext"].append(text)
                     is_init = False
 
-            status_place.write("生成完了！")
+            status_place.write("🎉生成完了！")
 
 
 if __name__ == "__main__":
