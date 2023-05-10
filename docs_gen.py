@@ -73,17 +73,20 @@ def main():
     status_plasce = st.empty()
 
     with st.sidebar:
-        inputtext = st.text_input("テーマを入力")
-        input_gen_length = st.number_input(
-            "生成文字数を入力", min_value=0, step=100, help="0に設定すると指定なしとなります。"
-        )
+        with st.form("settings"):
+            inputtext = st.text_input("テーマを入力")
+            input_gen_length = st.number_input(
+                "生成文字数を入力", min_value=0, step=100, help="0に設定すると指定なしとなります。"
+            )
+            submit = st.form_submit_button("生成開始")
 
-    if input_gen_length:
-        gen_length = f"- 文字数は必ず{input_gen_length}文字前後とする。"
-    else:
-        gen_length = ""
+    if submit:
+        if input_gen_length:
+            gen_length = f"- 文字数は必ず{input_gen_length}文字前後とする。"
+        else:
+            gen_length = ""
 
-    instructions = f"""
+        instructions = f"""
 あなたは{inputtext}におけるベテランの研修講師です。
 {inputtext}について初学者～中級者が実務で通用するレベルで知識をつけられる研修資料を作成してください。
 作成に当たっては以下に厳密に従ってください。
@@ -104,45 +107,47 @@ def main():
 {gen_length}
     """
 
-    if len(st.session_state["alltext"]) > 10:
-        del st.session_state["alltext"][0:1]
+        if len(st.session_state["alltext"]) > 10:
+            del st.session_state["alltext"][0:1]
 
-    if inputtext:
-        st.session_state["alltext"].append(inputtext)
-        result_text = ""
+        if inputtext:
+            st.session_state["alltext"].append(inputtext)
+            result_text = ""
 
-        with st.spinner(text="生成中..."):
-            new_place = st.empty()
-            is_init = True
-            while True:
-                if is_init:
-                    message = "\n".join(st.session_state["alltext"])
-                else:
-                    message = "\n".join(st.session_state["alltext"]) + "続きを出力"
+            with st.spinner(text="生成中..."):
+                new_place = st.empty()
+                is_init = True
+                while True:
+                    if is_init:
+                        message = "\n".join(st.session_state["alltext"])
+                    else:
+                        message = "\n".join(st.session_state["alltext"]) + "続きを出力"
 
-                end_search = [
-                    value for value in st.session_state["alltext"] if "出力完了" in value
-                ]
-                if len(end_search) != 0:
-                    break
-                else:
-                    for talk in chat(message, settings=instructions, model=model):
-                        result_text += talk
-                        new_place.text(result_text)
-                    st.session_state["alltext"].append(result_text)
+                    end_search = [
+                        value
+                        for value in st.session_state["alltext"]
+                        if "出力完了" in value
+                    ]
+                    if len(end_search) != 0:
+                        break
+                    else:
+                        for talk in chat(message, settings=instructions, model=model):
+                            result_text += talk
+                            new_place.text(result_text)
+                        st.session_state["alltext"].append(result_text)
 
-                    graphtext = get_graph_text(result_text)
-                    umltext, make = get_uml_text(result_text)
+                        graphtext = get_graph_text(result_text)
+                        umltext, make = get_uml_text(result_text)
 
-                    if graphtext:
-                        st.graphviz_chart(graphtext)
+                        if graphtext:
+                            st.graphviz_chart(graphtext)
 
-                    if make:
-                        st.image(umltext[0])
+                        if make:
+                            st.image(umltext[0])
 
-                    is_init = False
+                        is_init = False
 
-        status_plasce.write("生成完了！")
+            status_plasce.write("生成完了！")
 
 
 st.set_page_config(page_title="LearnMateAI", page_icon="📚", layout="wide")
