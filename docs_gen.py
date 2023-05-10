@@ -4,13 +4,12 @@ from plantweb.render import render
 import time
 
 
-def chat(text, messages=None, settings="", max_tokens=4096, model="gpt-4"):
+def chat(text, settings, max_tokens, model):
 
-    # やり取りの管理
-    messages = messages if messages is not None else []
-    if settings and not messages:
-        messages.append({"role": "system", "content": settings})
-    messages.append({"role": "user", "content": text})
+    messages = [
+        {"role": "system", "content": settings},
+        {"role": "user", "content": text},
+    ]
 
     # APIを叩く、streamをTrueに
     while True:
@@ -107,8 +106,8 @@ def main():
 - 各種情報には出典を明記する。
 - セクションごとに理解度を確認する簡単なクイズを作成する。
 - 生成物以外は出力しない（例えば生成物に対するコメントや説明など）
-- 出力の制限によって途中で生成物が途切れた場合は「続きを出力」と送るので、続きを出力する。
-- 最後まで出力が完了している場合は「続きを出力」と送られた場合でも「出力完了」と返す。
+- 指示の最後に「続きを出力」と送られた場合は、指示の続きから出力する。
+- 最後まで出力が完了している場合は「続きを出力」と指示された場合でも「出力完了」と返す。
 {gen_length}
     """
 
@@ -126,7 +125,7 @@ def main():
                     if is_init:
                         message = "\n".join(st.session_state["alltext"])
                     else:
-                        message = "\n".join(st.session_state["alltext"]) + "続きを出力"
+                        message = "\n".join(st.session_state["alltext"]) + "\n続きを出力"
 
                     end_search = [
                         value
@@ -136,7 +135,12 @@ def main():
                     if len(end_search) != 0:
                         break
                     else:
-                        for talk in chat(message, settings=instructions, model=model):
+                        for talk in chat(
+                            text=message,
+                            settings=instructions,
+                            max_tokens=3500,
+                            model=model,
+                        ):
                             result_text += talk
                             new_place.text(result_text)
                         st.session_state["alltext"].append(result_text)
