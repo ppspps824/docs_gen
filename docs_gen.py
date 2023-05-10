@@ -127,6 +127,11 @@ def main():
                         message = "".join(st.session_state["alltext"])
                     else:
                         message = "".join(st.session_state["alltext"]) + "\n[指示：続きを出力]"
+                    end_search = [
+                        value
+                        for value in st.session_state["alltext"]
+                        if "出力完了" in value
+                    ]
 
                     if len(end_search) != 0:
                         break
