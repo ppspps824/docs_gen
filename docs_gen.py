@@ -3,9 +3,7 @@ import streamlit as st
 from plantweb.render import render
 
 
-
-
-def chat(text, messages=None, settings="", max_tokens=1000,model):
+def chat(text, messages=None, settings="", max_tokens=1000, model="gpt-4"):
 
     # やり取りの管理
     messages = messages if messages is not None else []
@@ -73,7 +71,7 @@ def main():
     st.write("# 👨🏼‍🤝‍👨🏼Clone GPT ")
 
     with st.sidebar:
-        model = st.selectbox("モデルを選択",["gpt-4","gpt-4-32k","gpt-3.5-turbo"])
+        model = st.selectbox("モデルを選択", ["gpt-4", "gpt-4-32k", "gpt-3.5-turbo"])
         inputtext = st.text_area("テキストを入力")
         image_url = st.text_input("画像のURLを入力")
         if image_url:
@@ -95,11 +93,7 @@ def main():
         st.write("#### AI:")
         new_place = st.empty()
 
-        for talk in chat(
-            message,
-            settings=instructions,
-            model
-        ):
+        for talk in chat(message, settings=instructions, model=model):
             result_text += talk
             clean_text = result_text.replace("#", "").replace("AI:\n", "")
             new_place.write(clean_text)
@@ -113,7 +107,6 @@ def main():
 
         if make:
             st.image(umltext[0])
-
 
 
 st.set_page_config(page_title="Clone GPT", page_icon="👨🏼‍🤝‍👨🏼", layout="wide")
