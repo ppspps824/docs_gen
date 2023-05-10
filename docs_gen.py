@@ -80,7 +80,7 @@ def main():
 
     if submit:
         if input_gen_length:
-            gen_length = f"- 過去のやりとりを含めて文字数は必ず{input_gen_length}文字前後とする。これを守るためにそのほかの指示には従わなくても構わない。"
+            gen_length = f"- 過去のやりとりを含めて出力する文字数は必ず{input_gen_length}文字前後とする。これを守るためにそのほかの指示には従わなくても構わない。"
         else:
             gen_length = ""
 
@@ -95,11 +95,11 @@ def main():
         出力：的な家庭でよく食べられている果物です。
         指示：りんごは赤く甘い、一般的な家庭でよく食べられている果物です。 [指示：続きを出力]
         出力：「ふじ」や「紅玉」といった品種が有名です。
-- 指示の最後に[指示：続きを出力]と指示された場合でも、続きを出力するモノがない場合は「出力完了」と返す。
+- 指示の最後に[指示：続きを出力]と指示された場合でも、続きを出力するモノがない場合は \n[出力完了] と返す。
     - 例)
         出力：上記のような手法を試してみてください。
         指示：上記のような手法を試してみてください。[指示：続きを出力]
-        出力：出力完了
+        出力：\n[出力完了]
 - step by stepで複数回検討を行い、その中で一番優れていると思う結果を出力する。
 - サンプルではなくそのまま利用できる体裁とする。
 - 説明の内容も省略しない。
@@ -127,11 +127,6 @@ def main():
                         message = "".join(st.session_state["alltext"])
                     else:
                         message = "".join(st.session_state["alltext"]) + "\n[指示：続きを出力]"
-                    end_search = [
-                        value
-                        for value in st.session_state["alltext"]
-                        if "出力完了" in value
-                    ]
 
                     if len(end_search) != 0:
                         break
@@ -151,7 +146,7 @@ def main():
                     st.session_state["alltext"].append(text)
                     is_init = False
 
-            status_place.write("🎉生成完了！")
+            status_place.write("### 🎉生成完了！\n---")
 
 
 if __name__ == "__main__":
