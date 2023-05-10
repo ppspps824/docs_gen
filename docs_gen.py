@@ -75,11 +75,11 @@ def main():
     with st.sidebar:
         inputtext = st.text_input("テーマを入力")
         input_gen_length = st.number_input(
-            "生成文字数を入力", min_value=0, step=50, help="0に設定すると指定なしとなります。"
+            "生成文字数を入力", min_value=0, step=100, help="0に設定すると指定なしとなります。"
         )
 
     if input_gen_length:
-        gen_length = f"- 文字数は{input_gen_length}文字とする。"
+        gen_length = f"- 文字数は必ず{input_gen_length}文字前後とする。"
     else:
         gen_length = ""
 
@@ -93,8 +93,7 @@ def main():
 - プログラミングやシェルなどコードを入力する内容の場合はコードブロックを利用してサンプルコードを出力する。
 - 出力はMarkdownとする。
 - 各種コンテンツはできる限り詳細に記載する。
-- 一般的な知識に加えて少し掘り下げたトリビアや豆知識を織り交ぜる。
-- コンテンツの中盤ではブレイクタイムとして{inputtext}にまつわるエピソードやジョークを織り交ぜる。
+- コンテンツの中盤ではブレイクタイムとして{inputtext}にまつわるトリビアや豆知識を織り交ぜる。
 - 画像や絵文字、アイコン等を使用し視覚的に興味を引く工夫を行う。
 - 画像はUnsplashより取得するか、SVG形式で生成する。
 - 各種情報には出典を明記する。
@@ -114,8 +113,13 @@ def main():
 
         with st.spinner(text="生成中..."):
             new_place = st.empty()
+            is_init = True
             while True:
-                message = "\n".join(st.session_state["alltext"])
+                if is_init:
+                    message = "\n".join(st.session_state["alltext"])
+                else:
+                    message = "\n".join(st.session_state["alltext"]) + "続きを出力"
+
                 end_search = [
                     value for value in st.session_state["alltext"] if "出力完了" in value
                 ]
@@ -135,6 +139,8 @@ def main():
 
                     if make:
                         st.image(umltext[0])
+
+                    is_init = False
 
         status_plasce.write("生成完了！")
 
