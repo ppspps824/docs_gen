@@ -138,7 +138,7 @@ def main():
                         for talk in chat(
                             text=message,
                             settings=instructions,
-                            max_tokens=3500,
+                            max_tokens=50,
                             model=model,
                         ):
                             result_text += talk
