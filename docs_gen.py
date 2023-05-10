@@ -129,6 +129,8 @@ def main():
 
             with st.spinner(text="生成中..."):
                 new_place = st.empty()
+                debug_place = st.empty()
+
                 is_init = True
                 while True:
                     if is_init:
@@ -137,7 +139,7 @@ def main():
                         message = (
                             "\n".join(st.session_state["alltext"]) + "\n[指示：続きを出力]"
                         )
-
+                    debug_place.text(message)
                     end_search = [
                         value
                         for value in st.session_state["alltext"]
