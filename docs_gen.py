@@ -2,15 +2,10 @@ import openai
 import streamlit as st
 from plantweb.render import render
 
-st.set_page_config(page_title="Clone GPT", page_icon="👨🏼‍🤝‍👨🏼", layout="wide")
-
-try:
-    openai.api_key = st.secrets["OPEN_AI_KEY"]
-except:
-    pass
 
 
-def chat(text, messages=None, settings="", max_tokens=1000):
+
+def chat(text, messages=None, settings="", max_tokens=1000,model):
 
     # やり取りの管理
     messages = messages if messages is not None else []
@@ -20,7 +15,7 @@ def chat(text, messages=None, settings="", max_tokens=1000):
 
     # APIを叩く、streamをTrueに
     resp = openai.ChatCompletion.create(
-        model="gpt-4",
+        model=model,
         messages=messages,
         max_tokens=max_tokens,
         stream=True,
@@ -65,14 +60,6 @@ def get_uml_text(text):
 
 
 def main():
-    hide_streamlit_style = """
-                <style>
-                #MainMenu {visibility: hidden;}
-                footer {visibility: hidden;}
-                </style>
-                """
-    st.markdown(hide_streamlit_style, unsafe_allow_html=True)
-
     if "alltext" not in st.session_state:
         st.session_state["alltext"] = []
 
@@ -86,6 +73,7 @@ def main():
     st.write("# 👨🏼‍🤝‍👨🏼Clone GPT ")
 
     with st.sidebar:
+        model = st.selectbox("モデルを選択",["gpt-4","gpt-4-32k","gpt-3.5-turbo"])
         inputtext = st.text_area("テキストを入力")
         image_url = st.text_input("画像のURLを入力")
         if image_url:
@@ -110,6 +98,7 @@ def main():
         for talk in chat(
             message,
             settings=instructions,
+            model
         ):
             result_text += talk
             clean_text = result_text.replace("#", "").replace("AI:\n", "")
@@ -126,4 +115,19 @@ def main():
             st.image(umltext[0])
 
 
-main()
+
+st.set_page_config(page_title="Clone GPT", page_icon="👨🏼‍🤝‍👨🏼", layout="wide")
+
+hide_streamlit_style = """
+            <style>
+            #MainMenu {visibility: hidden;}
+            footer {visibility: hidden;}
+            </style>
+            """
+st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+
+try:
+    openai.api_key = st.secrets["OPEN_AI_KEY"]
+    main()
+except:
+    st.write("API-KEYを検出できませんでした。")
