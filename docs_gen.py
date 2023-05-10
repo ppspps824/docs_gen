@@ -1,6 +1,7 @@
 import openai
 import streamlit as st
 from plantweb.render import render
+import time
 
 
 def chat(text, messages=None, settings="", max_tokens=4096, model="gpt-4"):
@@ -12,19 +13,23 @@ def chat(text, messages=None, settings="", max_tokens=4096, model="gpt-4"):
     messages.append({"role": "user", "content": text})
 
     # APIを叩く、streamをTrueに
-    resp = openai.ChatCompletion.create(
-        model=model,
-        messages=messages,
-        max_tokens=max_tokens,
-        stream=True,
-    )
+    while True:
+        try:
+            resp = openai.ChatCompletion.create(
+                model=model,
+                messages=messages,
+                max_tokens=max_tokens,
+                stream=True,
+            )
 
-    # 返答を受け取り、逐次yield
-    for chunk in resp:
-        if chunk:
-            content = chunk["choices"][0]["delta"].get("content")
-            if content:
-                yield content
+            # 返答を受け取り、逐次yield
+            for chunk in resp:
+                if chunk:
+                    content = chunk["choices"][0]["delta"].get("content")
+                    if content:
+                        yield content
+        except:
+            time.sleep(3)
 
 
 def get_graph_text(text):
@@ -69,6 +74,14 @@ def main():
 
     with st.sidebar:
         inputtext = st.text_input("テーマを入力")
+        input_gen_length = st.number_input(
+            "生成文字数を入力", min_value=0, step=50, help="0に設定すると指定なしとなります。"
+        )
+
+    if input_gen_length:
+        gen_length = f"- 文字数は{input_gen_length}文字とする。"
+    else:
+        gen_length = ""
 
     instructions = f"""
 あなたは{inputtext}におけるベテランの研修講師です。
@@ -89,6 +102,7 @@ def main():
 - 生成物以外は出力しない（例えば生成物に対するコメントや説明など）
 - 出力の制限によって途中で生成物が途切れた場合は「続きを出力」と送るので、続きを出力する。
 - 最後まで出力が完了している場合は「続きを出力」と送られた場合でも「出力完了」と返す。
+{gen_length}
     """
 
     if len(st.session_state["alltext"]) > 10:
