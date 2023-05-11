@@ -35,7 +35,7 @@ def main():
             model = st.selectbox("モデルを選択", ["gpt-4", "gpt-3.5-turbo"])
             inputtext = st.text_input("テーマを入力")
             input_gen_length = st.number_input(
-                "生成文字数を入力", min_value=0, step=100, help="0に設定すると指定なしとなります。"
+                "生成文字数を入力", min_value=0, step=100, value=1000, help="0に設定すると指定なしとなります。"
             )
             submit = st.form_submit_button("生成開始")
 
