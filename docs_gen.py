@@ -38,9 +38,22 @@ def main():
                 "生成文字数を入力", min_value=0, step=100, value=1000, help="0に設定すると指定なしとなります。"
             )
             submit = st.form_submit_button("生成開始")
+        with st.expander("📚LearnMateAIとは"):
+            st.write(
+                """
+指定されたテーマに沿った資料をMarkdown形式で生成するAIです。  
+自己学習用のの資料作成から、研修資料作成まで幅広く対応します。  
+
+生成文字数を300文字以内に指定すると概要説明資料を生成し、それ以上あるいは0（指定なし）とすると研修に使用できる資料※を生成します。
+※理解度を確認するためのクイズ付き
+
+事前に用意した資料をもとにガイドを作成するなどの機能も追加予定です。（社内資料等をもとに新規参入者の受入資料作成や独自マニュアルの作成などに活用できます。）
+
+"""
+            )
 
     if submit:
-        if input_gen_length < 300:
+        if input_gen_length <= 300:
             gen_rule = f"初学者が概要を把握できるレベルの資料を{input_gen_length}文字以内で作成してください"
         else:
             gen_rule = (
