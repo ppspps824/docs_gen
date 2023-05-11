@@ -49,10 +49,13 @@ def make_query_engine(data, llm, reading, ext):
             DocxReader = download_loader("DocxReader")
             loader = DocxReader()
             documents = loader.load_data(file=data)
-        elif ext in [".png", ".jpeg", ".jpg"]:
-            ImageCaptionReader = download_loader("ImageCaptionReader")
-            loader = ImageCaptionReader()
-            documents = loader.load_data(file=data)
+        # elif ext in [".png", ".jpeg", ".jpg"]:
+        #     ImageCaptionReader = download_loader("ImageCaptionReader")
+        #     loader = ImageCaptionReader()
+        #     documents = loader.load_data(file=data)
+        else:
+            st.error(f"非対応のファイル形式です。：{ext}")
+            st.stop()
 
         index = GPTVectorStoreIndex.from_documents(
             documents, service_context=service_context
