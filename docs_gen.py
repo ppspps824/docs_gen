@@ -13,58 +13,18 @@ def chat(text, settings, max_tokens, model):
 
     # APIを叩く、streamをTrueに
     while True:
-        error_count = 0
-        try:
-            resp = openai.ChatCompletion.create(
-                model=model,
-                messages=messages,
-                max_tokens=max_tokens,
-                stream=True,
-            )
-            return resp
-        except:
-            if error_count < 3:
-                time.sleep(3)
-            else:
-                st.error("エラーが発生しました。再実行すると解消する可能性があります。")
-                st.stop
-
-
-def get_graph_text(text):
-    result = ""
-    st = text.find("digraph")
-    end = text.find("}")
-    result = text[st : end + 1]
-
-    return result
-
-
-def get_uml_text(text):
-    result = ""
-    st = text.find("@startuml")
-    end = text.find("@enduml")
-
-    umltext = text[st : end + 7]
-
-    if umltext:
-        result = render(
-            umltext,
-            engine="plantuml",
-            format="png",
-            cacheopts={"use_cache": False},
+        resp = openai.ChatCompletion.create(
+            model=model,
+            messages=messages,
+            max_tokens=max_tokens,
+            stream=True,
         )
-        make = True
-    else:
-        make = False
-
-    return result, make
+        return resp
 
 
 def main():
     if "alltext" not in st.session_state:
         st.session_state["alltext"] = []
-
-    model = "gpt-4"
 
     st.write("# 📚LearnMateAI ")
     st.write("---")
@@ -72,6 +32,7 @@ def main():
 
     with st.sidebar:
         with st.form("settings"):
+            model = st.selectbox("モデルを選択", ["gpt-4", "gpt-3.5-turbo"])
             inputtext = st.text_input("テーマを入力")
             input_gen_length = st.number_input(
                 "生成文字数を入力", min_value=0, step=100, help="0に設定すると指定なしとなります。"
@@ -80,7 +41,7 @@ def main():
 
     if submit:
         if input_gen_length < 300:
-            gen_rule = f"初学者が概要を把握できるレベルの文章を{input_gen_length}文字以内で作成してください"
+            gen_rule = f"初学者が概要を把握できるレベルの資料を{input_gen_length}文字以内で作成してください"
         else:
             gen_rule = (
                 f"初学者～中級者が実務で通用するレベルで知識をつけられる研修資料を{input_gen_length}文字以内で作成してください"
@@ -96,11 +57,7 @@ def main():
         出力：的な家庭でよく食べられている果物です。
         指示：りんごは赤く甘い、一般的な家庭でよく食べられている果物です。 [指示：続きを出力]
         出力：「ふじ」や「紅玉」といった品種が有名です。
-- 指示の最後に[指示：続きを出力]と指示された場合でも、続きを出力するモノがない場合は \n\n出力完了 と返す。
-    - 例)
-        出力：上記のような手法を試してみてください。
-        指示：上記のような手法を試してみてください。[指示：続きを出力]
-        出力：\n\n出力完了
+
 - step by stepで複数回検討を行い、その中で一番優れていると思う結果を出力する。
 - サンプルではなくそのまま利用できる体裁とする。
 - プログラミングやシェルなどコードを入力する内容の場合はコードブロックを利用してサンプルコードを出力する。
@@ -120,36 +77,34 @@ def main():
             text = ""
 
             with st.spinner(text="生成中..."):
+                st.write(f"## テーマ：{inputtext}")
                 new_place = st.empty()
-                is_init = True
+                finish_reason = ""
                 while True:
-                    if is_init:
-                        message = "".join(st.session_state["alltext"])
-                    else:
-                        message = "".join(st.session_state["alltext"]) + "\n[指示：続きを出力]"
-                    end_search = [
-                        value
-                        for value in st.session_state["alltext"]
-                        if "出力完了" in value
-                    ]
-
-                    if len(end_search) != 0:
+                    if finish_reason == "stop":
                         break
+                    elif finish_reason == "length":
+                        message = "".join(st.session_state["alltext"]) + "[指示：続きを出力]"
                     else:
-                        completion = chat(
-                            text=message,
-                            settings=instructions,
-                            max_tokens=3500,
-                            model=model,
+                        st.error(
+                            f"エラーが発生しました。finish_reason={finish_reason}\n{completion}"
                         )
-                        for chunk in completion:
-                            next = chunk["choices"][0]["delta"].get("content", "")
-                            text += next
-                            text = text.replace("[指示：続きを出力]", "")
-                            new_place.text(text)
+                        st.stop
+
+                    completion = chat(
+                        text=message,
+                        settings=instructions,
+                        max_tokens=3500,
+                        model=model,
+                    )
+                    for chunk in completion:
+                        stop_reason = chunk["choices"][0].get("finish_reason", "")
+                        next = chunk["choices"][0]["delta"].get("content", "")
+                        text += next
+                        text = text.replace("[指示：続きを出力]", "")
+                        new_place.text(text)
 
                     st.session_state["alltext"].append(text)
-                    is_init = False
 
             status_place.write("### 🎉生成完了！\n---")
 
