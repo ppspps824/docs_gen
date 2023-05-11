@@ -50,8 +50,8 @@ def make_query_engine(data, llm, reading, ext):
             loader = DocxReader()
             documents = loader.load_data(file=data)
         elif ext in [".png", ".jpeg", ".jpg"]:
-            ImageReader = download_loader("ImageReader")
-            loader = ImageReader(text_type="key_value")
+            ImageCaptionReader = download_loader("ImageCaptionReader")
+            loader = ImageCaptionReader()
             documents = loader.load_data(file=data)
 
         index = GPTVectorStoreIndex.from_documents(
