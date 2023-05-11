@@ -69,7 +69,7 @@ def main():
 - step by stepで複数回検討を行い、その中で一番優れていると思う結果を出力する。
 - サンプルではなくそのまま利用できる体裁とする。
 - プログラミングやシェルなどコードを入力する内容の場合はコードブロックを利用してサンプルコードを出力する。
-- 出力はMarkdownとする。
+- 出力はMarkdownとする。必要に応じてsummary,detailsなとのHTML要素も組み合わせる。
 - 各種コンテンツはできる限り詳細に記載する。
 - コンテンツの中盤ではブレイクタイムとして{inputtext}にまつわる豆知識を織り交ぜる。
 - 画像や絵文字、アイコン等を使用し視覚的に興味を引く工夫を行う。
@@ -113,7 +113,7 @@ def main():
                         next = chunk["choices"][0]["delta"].get("content", "")
                         text += next
                         text = text.replace("[指示：続きを出力]", "")
-                        new_place.text(text)
+                        new_place.write(text)
 
                     st.session_state["alltext"].append(text)
 
