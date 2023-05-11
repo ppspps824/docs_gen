@@ -1,3 +1,5 @@
+import datetime
+
 import openai
 import streamlit as st
 
@@ -28,11 +30,11 @@ def main():
 
     st.write("# 📚LearnMateAI ")
     st.write("---")
-    status_place = st.empty()
+    status_place = st.container()
 
     with st.sidebar:
         with st.form("settings"):
-            model = st.selectbox("モデルを選択", ["gpt-4", "gpt-3.5-turbo"])
+            model = st.selectbox("モデルを選択", ["gpt-3.5-turbo", "gpt-4"])
             inputtext = st.text_input("テーマを入力")
             level = st.selectbox("レベルを選択", ["初心者", "中級者", "上級者"])
             input_gen_length = st.number_input(
@@ -115,7 +117,18 @@ def main():
 
                     st.session_state["alltext"].append(text)
 
-            status_place.write("### 🎉生成完了！\n---")
+            t_delta = datetime.timedelta(hours=9)
+            JST = datetime.timezone(t_delta, "JST")
+            now = datetime.datetime.now(JST)
+
+            with status_place:
+                st.write("### 🎉生成完了！\n---")
+                st.download_button(
+                    "テキストをダウンロード",
+                    file_name=f"LearnMateAI_{now.strftime('%Y%m%d%H%M%S')}.md",
+                    data="\n".join(st.session_state["alltext"]),
+                    mime="text/plain",
+                )
             st.session_state["alltext"] = []
 
 
