@@ -1,5 +1,3 @@
-import time
-
 import openai
 import streamlit as st
 
@@ -11,8 +9,7 @@ def chat(text, settings, max_tokens, model):
         {"role": "user", "content": text},
     ]
 
-    # APIを叩く、streamをTrueに
-    while True:
+    try:
         resp = openai.ChatCompletion.create(
             model=model,
             messages=messages,
@@ -20,6 +17,9 @@ def chat(text, settings, max_tokens, model):
             stream=True,
         )
         return resp
+    except Exception as e:
+        st.error(f"エラー:{e}")
+        st.stop()
 
 
 def main():
@@ -52,12 +52,6 @@ def main():
 {inputtext}について、{gen_rule}。
 作成に当たっては以下に厳密に従ってください。
 - 指示の最後に[指示：続きを出力]と送られた場合は、[指示：続きを出力]の前の文章の続きを出力する。
-    - 例) 
-        指示：りんごは赤く甘い、一般 [指示：続きを出力]
-        出力：的な家庭でよく食べられている果物です。
-        指示：りんごは赤く甘い、一般的な家庭でよく食べられている果物です。 [指示：続きを出力]
-        出力：「ふじ」や「紅玉」といった品種が有名です。
-
 - step by stepで複数回検討を行い、その中で一番優れていると思う結果を出力する。
 - サンプルではなくそのまま利用できる体裁とする。
 - プログラミングやシェルなどコードを入力する内容の場合はコードブロックを利用してサンプルコードを出力する。
@@ -79,17 +73,20 @@ def main():
             with st.spinner(text="生成中..."):
                 st.write(f"## テーマ：{inputtext}")
                 new_place = st.empty()
-                finish_reason = ""
+                finish_reason = "init"
+                completion = ""
                 while True:
-                    if finish_reason == "stop":
+                    if finish_reason == "init":
+                        message = "".join(st.session_state["alltext"])
+                    elif finish_reason == "stop":
                         break
                     elif finish_reason == "length":
                         message = "".join(st.session_state["alltext"]) + "[指示：続きを出力]"
                     else:
-                        st.error(
-                            f"エラーが発生しました。finish_reason={finish_reason}\n{completion}"
-                        )
+                        st.error(f"エラーが発生しました。finish_reason={finish_reason}")
                         st.stop
+
+                    message = message[0:3500]
 
                     completion = chat(
                         text=message,
@@ -98,7 +95,7 @@ def main():
                         model=model,
                     )
                     for chunk in completion:
-                        stop_reason = chunk["choices"][0].get("finish_reason", "")
+                        finish_reason = chunk["choices"][0].get("finish_reason", "")
                         next = chunk["choices"][0]["delta"].get("content", "")
                         text += next
                         text = text.replace("[指示：続きを出力]", "")
