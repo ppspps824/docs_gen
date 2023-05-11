@@ -117,6 +117,7 @@ def main():
                     st.session_state["alltext"].append(text)
 
             status_place.write("### 🎉生成完了！\n---")
+            st.session_state["alltext"] = []
 
 
 if __name__ == "__main__":
