@@ -1,3 +1,4 @@
 openai
 langchain
 llama_index
+gpt_index
