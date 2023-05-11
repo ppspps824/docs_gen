@@ -79,10 +79,16 @@ def main():
             submit = st.form_submit_button("生成開始")
 
     if submit:
+        if input_gen_length < 300:
+            gen_rule = f"初学者が概要を把握できるレベルの文章を{input_gen_length}文字以内で作成してください"
+        else:
+            gen_rule = (
+                f"初学者～中級者が実務で通用するレベルで知識をつけられる研修資料を{input_gen_length}文字以内で作成してください"
+            )
 
         instructions = f"""
 あなたは{inputtext}におけるベテランの研修講師です。
-{inputtext}について初学者～中級者が実務で通用するレベルで知識をつけられる研修資料を{input_gen_length}文字以内で作成してください。
+{inputtext}について、{gen_rule}。
 作成に当たっては以下に厳密に従ってください。
 - 指示の最後に[指示：続きを出力]と送られた場合は、[指示：続きを出力]の前の文章の続きを出力する。
     - 例) 
