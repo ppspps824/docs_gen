@@ -1,6 +1,7 @@
 import datetime
 import os
 import tempfile
+import time
 from pathlib import Path
 from typing import Any, Dict, List
 
@@ -108,17 +109,29 @@ def chat(text, settings, max_tokens, model):
         {"role": "user", "content": text},
     ]
 
-    try:
-        resp = openai.ChatCompletion.create(
-            model=model,
-            messages=messages,
-            max_tokens=max_tokens,
-            stream=True,
-        )
-        return resp
-    except Exception as e:
-        st.error(f"エラー:{e}")
-        st.stop()
+    try_count = 3
+    for try_time in range(try_count):
+        try:
+            resp = openai.ChatCompletion.create(
+                model=model,
+                messages=messages,
+                max_tokens=max_tokens,
+                stream=True,
+                timeout=120,
+                request_timeout=120,
+            )
+            return resp
+
+        except openai.error.APIError:
+            time.sleep(1)
+        except openai.error.InvalidRequestError:
+            pass
+        except (
+            openai.error.RateLimitError,
+            openai.error.RateLimitError,
+            openai.error.openai.error.APIConnectionError,
+        ):
+            time.sleep(10)
 
 
 def main():
@@ -220,18 +233,16 @@ def main():
 あなたは{inputtext}の専門家です。
 {inputtext}について、{gen_rule}。
 作成に当たっては以下に厳密に従ってください。
-- 指示の最後に[指示：続きを出力]と送られた場合は、[指示：続きを出力]の前の文章の続きを出力する。
+- 指示の最後に[続きを出力]と送られた場合は、[続きを出力]の前の文章の続きを出力する。
 - step by stepで複数回検討を行い、その中で一番優れていると思う結果を出力する。
-- サンプルではなくそのまま利用できる体裁とする。
-- プログラミングやシェルなどコードを入力する内容の場合はコードブロックを利用してサンプルコードを出力する。
-- 出力はMarkdownとする。必要に応じてsummary,detailsなどのHTML要素も組み合わせる。
-- 各説明の後は「例えば○○は...」のように説明した内容の実例を入れる。
-- 各種コンテンツは簡潔かつ詳細に記載する。
-- コンテンツの中盤ではブレイクタイムとして{inputtext}にまつわる豆知識を織り交ぜる。
+- サンプルではなくそのまま利用できる体裁とし、内容は詳細に記載する。
+- 出力はMarkdownとする。
+- コードブロックを利用してサンプルコードを出力する。
+- 各説明の後は説明した内容の実例を入れる。
+- コンテンツの中盤ではブレイクタイムとして豆知識を織り交ぜる。
 - 画像や絵文字、アイコン等を使用し視覚的に興味を引く工夫を行う。
-- 図やグラフを表示する際はGraphviz形式あるいはPlantUML形式とする。
-- 画像はbase64形式で出力する。
-- 各種情報には出典を明記する。
+- 図やグラフを表示する際はmarmaid.js形式とする。
+- 出典を明記する。
 - セクションごとに理解度を確認する簡単なクイズを作成する。
 - 生成物以外は出力しない（例えば生成物に対するコメントや説明など）
 {supplement}
@@ -242,15 +253,14 @@ def main():
             instructions = f"""
 {base_instructions}
 - 今後の学習ロードマップを作成する。
-- 次のレベルに進むためのお勧めの教材を紹介する。
+- 次のレベルに進むための教材を紹介する。
             """
         elif level == "中上級者":
             instructions = f"""
 {base_instructions}
-- 基本的は部分の説明は省略する。
-- ニッチな内容や、高度な工夫、活発に議論されているテーマなどを中心にする。
+- 基本的は部分の説明は省略し、ニッチな内容や高度な技術を中心に構成する。
 - 関連する別の分野の研究内容なども紹介する。
-- より深く学習するためのお勧めの資料などを紹介する。
+- より深く学習するための資料などを紹介する。
             """
 
         if inputtext:
@@ -267,7 +277,7 @@ def main():
                     elif finish_reason == "stop":
                         break
                     elif finish_reason == "length":
-                        message = "".join(st.session_state["alltext"]) + "[指示：続きを出力]"
+                        message = "".join(st.session_state["alltext"]) + "[続きを出力]"
                     else:
                         st.error(f"エラーが発生しました。finish_reason={finish_reason}")
                         st.stop
