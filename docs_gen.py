@@ -253,7 +253,7 @@ def main():
                     message = message[0:3500]
 
                     if orginal_file:
-                        query_engine.query(message + instructions)
+                        query_engine.query(message + instructions, similarity_top_k=3)
                         break
                     else:
                         completion = chat(
