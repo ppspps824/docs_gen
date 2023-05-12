@@ -2,6 +2,7 @@ import datetime
 import os
 import tempfile
 from pathlib import Path
+from typing import Any, Dict, List
 
 import faiss
 import openai
@@ -19,6 +20,14 @@ from llama_index import (
 )
 from llama_index.llm_predictor.chatgpt import ChatGPTLLMPredictor
 from llama_index.vector_stores.faiss import FaissVectorStore
+
+
+# promptsの出力を行わないためラップ
+class WrapStreamlitCallbackHandler(StreamlitCallbackHandler):
+    def on_llm_start(
+        self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
+    ) -> None:
+        pass
 
 
 def make_query_engine(data, llm, reading, name):
@@ -85,7 +94,9 @@ def make_query_engine(data, llm, reading, name):
         # インデックスの保存
         # index.storage_context.persist()
 
-    query_engine = index.as_query_engine()
+    query_engine = index.as_query_engine(
+        similarity_top_k=3,
+    )
 
     return query_engine
 
@@ -163,12 +174,22 @@ def main():
 
     if submit:
         st.session_state["alltext"] = []
+        st.write(f"## テーマ：{inputtext}")
+        if orginal_file:
+            if type(orginal_file) == str:
+                st.write(f"OriginalSource : {orginal_file}")
+            else:
+                st.write(f"OriginalSource : {orginal_file.name}")
+
+        st.session_state["alltext"] = []
         llm = ChatOpenAI(
             temperature=0,
             model_name=model,
             streaming=True,
             max_tokens=2000,
-            callback_manager=BaseCallbackManager([StreamlitCallbackHandler()]),
+            callback_manager=BaseCallbackManager(
+                [WrapStreamlitCallbackHandler()],
+            ),
         )
 
         if orginal_file:
@@ -237,7 +258,6 @@ def main():
             text = ""
 
             with st.spinner(text="生成中..."):
-                st.write(f"## テーマ：{inputtext}")
                 new_place = st.empty()
                 finish_reason = "init"
                 completion = ""
@@ -255,7 +275,7 @@ def main():
                     message = message[0:3500]
 
                     if orginal_file:
-                        query_engine.query(message + instructions, similarity_top_k=3)
+                        response = query_engine.query(message + instructions)
                         break
                     else:
                         completion = chat(
@@ -282,10 +302,11 @@ def main():
                 st.download_button(
                     "テキストをダウンロード",
                     file_name=f"LearnMateAI_{now.strftime('%Y%m%d%H%M%S')}.md",
-                    data="\n".join(st.session_state["alltext"]),
+                    data=response.response
+                    if response
+                    else "\n".join(st.session_state["alltext"]),
                     mime="text/plain",
                 )
-            st.session_state["alltext"] = []
 
 
 if __name__ == "__main__":
