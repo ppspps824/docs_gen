@@ -79,8 +79,13 @@ def make_query_engine(data, llm, reading, name):
         #     loader = ImageCaptionReader()
         #     documents = loader.load_data(file=data)
         else:
-            st.error(f"非対応のファイル形式です。：{name}")
-            st.stop()
+            try:
+                MarkdownReader = download_loader("MarkdownReader")
+                loader = MarkdownReader()
+                documents = loader.load_data(file=data)
+            except:
+                st.error(f"非対応のファイル形式です。：{name}")
+                st.stop()
 
         # dimensions of text-ada-embedding-002
         d = 1536
