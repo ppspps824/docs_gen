@@ -7,6 +7,7 @@ from typing import Any, Dict, List
 
 import faiss
 import openai
+import requests
 import streamlit as st
 from langchain.callbacks.base import BaseCallbackManager
 from langchain.callbacks.streamlit import StreamlitCallbackHandler
@@ -21,6 +22,7 @@ from llama_index import (
 )
 from llama_index.llm_predictor.chatgpt import ChatGPTLLMPredictor
 from llama_index.vector_stores.faiss import FaissVectorStore
+from streamlit_lottie import st_lottie, st_lottie_spinner
 
 
 # promptsの出力を行わないためラップ
@@ -29,6 +31,13 @@ class WrapStreamlitCallbackHandler(StreamlitCallbackHandler):
         self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
     ) -> None:
         pass
+
+
+def load_lottieurl(url: str):
+    r = requests.get(url)
+    if r.status_code != 200:
+        return None
+    return r.json()
 
 
 def make_query_engine(data, llm, reading, name):
@@ -142,13 +151,20 @@ def chat(text, settings, max_tokens, model):
 def main():
     if "alltext" not in st.session_state:
         st.session_state["alltext"] = []
+    col1, col2, _ = st.columns(3)
+    with col2:
+        st.write("#")
+        st.write("#")
+        st.write("# LearnMate.AI ")
+    with col1:
+        lottie_url = "https://assets9.lottiefiles.com/packages/lf20_glpbhbuh.json"
+        lottie_json = load_lottieurl(lottie_url)
+        st_lottie(lottie_json, height=200, loop=False)
 
-    st.write("# 📚LearnMateAI ")
-    st.write("---")
     status_place = st.container()
 
     with st.sidebar:
-        with st.expander("📚LearnMateAIとは"):
+        with st.expander("📚LearnMate.AIとは"):
             st.write(
                 """
 指定されたテーマと対象者のレベルに沿った資料を生成するAIです。  
@@ -272,7 +288,10 @@ def main():
             st.session_state["alltext"].append(inputtext)
             text = ""
 
-            with st.spinner(text="生成中..."):
+            lottie_url = "https://assets4.lottiefiles.com/packages/lf20_45movo.json"
+            spinner_lottie_json = load_lottieurl(lottie_url)
+
+            with st_lottie_spinner(spinner_lottie_json, height=200):
                 new_place = st.empty()
                 finish_reason = "init"
                 completion = ""
@@ -314,7 +333,9 @@ def main():
             now = datetime.datetime.now(JST)
 
             with status_place:
-                st.write("### 🎉生成完了！\n---")
+                lottie_url = "https://assets2.lottiefiles.com/datafiles/8UjWgBkqvEF5jNoFcXV4sdJ6PXpS6DwF7cK4tzpi/Check Mark Success/Check Mark Success Data.json"
+                lottie_json = load_lottieurl(lottie_url)
+                st_lottie(lottie_json, height=100, loop=False)
                 st.download_button(
                     "テキストをダウンロード",
                     file_name=f"LearnMateAI_{now.strftime('%Y%m%d%H%M%S')}.md",
@@ -326,10 +347,13 @@ def main():
 
 
 if __name__ == "__main__":
-    st.set_page_config(page_title="LearnMateAI", page_icon="📚", layout="wide")
+    st.set_page_config(page_title="LearnMate.AI", page_icon="📚", layout="wide")
 
     hide_streamlit_style = """
                 <style>
+               .block-container {
+                    padding-top: 1rem;
+                }
                 #MainMenu {visibility: hidden;}
                 footer {visibility: hidden;}
                 </style>

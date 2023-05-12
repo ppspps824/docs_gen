@@ -2,3 +2,4 @@ openai
 langchain
 llama_index
 faiss-cpu
+streamlit-lottie
