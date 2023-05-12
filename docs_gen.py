@@ -154,7 +154,7 @@ def main():
                 )
                 if not orginal_file:
                     orginal_file = st.text_input(
-                        "URL (WebSite,Yotube ect)", help="Youtubeは字幕付動画のみ。"
+                        "URL (WebSite,Youtube ect)", help="Youtubeは字幕付動画のみ。"
                     )
 
             reading = True
