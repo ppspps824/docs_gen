@@ -289,6 +289,7 @@ def main():
 
                     message = message[0:3500]
 
+                    response = ""
                     if orginal_file:
                         response = query_engine.query(message + instructions)
                         break
