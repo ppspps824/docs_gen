@@ -12,7 +12,6 @@ from llama_index import (
     GPTVectorStoreIndex,
     PromptHelper,
     ServiceContext,
-    SimpleDirectoryReader,
     StorageContext,
     download_loader,
     load_index_from_storage,
@@ -20,7 +19,7 @@ from llama_index import (
 from llama_index.llm_predictor.chatgpt import ChatGPTLLMPredictor
 
 
-def make_query_engine(data, llm, reading, ext):
+def make_query_engine(data, llm, reading, name):
     if reading:
         # インデックスの読み込み
         storage_context = StorageContext.from_defaults(persist_dir="./storage")
@@ -35,26 +34,40 @@ def make_query_engine(data, llm, reading, ext):
             prompt_helper=prompt_helper,
             chunk_size_limit=512,
         )
-        if ext == ".pdf":
+        if ".pdf" in name:
             PDFReader = download_loader("PDFReader")
             loader = PDFReader()
             documents = loader.load_data(file=data)
-        elif ext in [".txt", ".md"]:
-            documents = SimpleDirectoryReader(data)
-        elif ext == ".pptx":
+        elif any([".txt" in name, ".md" in name]):
+            MarkdownReader = download_loader("MarkdownReader")
+            loader = MarkdownReader()
+            documents = loader.load_data(file=data)
+        elif ".pptx" in name:
             PptxReader = download_loader("PptxReader")
             loader = PptxReader()
             documents = loader.load_data(file=data)
-        elif ext == ".docx":
+        elif ".docx" in name:
             DocxReader = download_loader("DocxReader")
             loader = DocxReader()
             documents = loader.load_data(file=data)
+        elif any([".mp3" in name, ".mp4" in name]):
+            AudioTranscriber = download_loader("AudioTranscriber")
+            loader = AudioTranscriber()
+            documents = loader.load_data(file=data)
+        elif "youtu" in name:
+            YoutubeTranscriptReader = download_loader("YoutubeTranscriptReader")
+            loader = YoutubeTranscriptReader()
+            documents = loader.load_data(ytlinks=[name])
+        elif "http" in name:
+            AsyncWebPageReader = download_loader("AsyncWebPageReader")
+            loader = AsyncWebPageReader()
+            documents = loader.load_data(urls=[name])
         # elif ext in [".png", ".jpeg", ".jpg"]:
         #     ImageCaptionReader = download_loader("ImageCaptionReader")
         #     loader = ImageCaptionReader()
         #     documents = loader.load_data(file=data)
         else:
-            st.error(f"非対応のファイル形式です。：{ext}")
+            st.error(f"非対応のファイル形式です。：{name}")
             st.stop()
 
         index = GPTVectorStoreIndex.from_documents(
@@ -97,30 +110,45 @@ def main():
     status_place = st.container()
 
     with st.sidebar:
-        with st.form("settings"):
-            model = st.selectbox("モデルを選択", ["gpt-3.5-turbo", "gpt-4"])
-            inputtext = st.text_input("テーマを入力", help="必須")
-            level = st.selectbox("レベルを選択", ["初心者", "中級者", "上級者"])
-            input_gen_length = st.number_input(
-                "生成文字数を入力", min_value=0, step=100, value=1000, help="0に設定すると指定なしとなります。"
-            )
-            orginal_file = st.file_uploader("独自データを使用する。")
-            reading = True
-
-            submit = st.form_submit_button("生成開始")
         with st.expander("📚LearnMateAIとは"):
             st.write(
                 """
-指定されたテーマと対象者のレベルに沿った資料をMarkdown形式で生成するAIです。  
-自己学習用の資料作成から、研修資料作成まで幅広く対応します。  
+指定されたテーマと対象者のレベルに沿った資料を生成するAIです。  
 
-生成文字数を300文字以内に指定すると概要説明資料を生成し、それ以上あるいは0（指定なし）とすると研修に使用できる資料※を生成します。
-※理解度を確認するためのクイズ付き
+生成文字数を300文字以内に指定すると概要説明資料を生成し、それ以上あるいは0（指定なし）とすると詳細な資料を生成します。
+※研修や導入資料として使えるように、理解度を確認するためのクイズ付き
 
-事前に用意した資料をもとにガイドを作成することもできます。（社内資料等をもとに新規参入者の受入資料作成や独自マニュアルの作成などに活用できます。）
+独自データ（txt,docx,pdf,pptx,mp3,ウェブページ,Youtube）をもとにガイドを作成することもできます。
 
+> 活用例
+> - 特定のテーマに沿った研修資料作成
+> - 自己学習用の資料作成
+> - 社内資料をもとに新規参入者の受入資料作成、マニュアルの作成  
+> - 会議の録音データを元に議事録を作成  
+> - ウェブページの要約  
+> - Youtube動画の要約（字幕付き動画のみ）
 """
             )
+            st.caption("*powered by GPT-3,GPT-4*")
+
+        with st.form("settings"):
+            model = st.selectbox("モデルを選択", ["gpt-3.5-turbo", "gpt-4"])
+            inputtext = st.text_input("テーマ", help="必須")
+            supplement = st.text_area("補足", help="任意")
+            level = st.selectbox("レベルを選択", ["初心者", "中上級者"])
+            input_gen_length = st.number_input(
+                "生成文字数を入力", min_value=0, step=100, value=1000, help="0に設定すると指定なしとなります。"
+            )
+            with st.expander("独自データを使用する"):
+                orginal_file = st.file_uploader(
+                    "ファイル", type=["txt", "md", "docx", "pdf", "pptx", "mp3", "mp4"]
+                )
+                if not orginal_file:
+                    orginal_file = st.text_input("URL", help="Youtubeは字幕付動画のみ。")
+
+            reading = True
+
+            submit = st.form_submit_button("生成開始")
 
     if submit:
         st.session_state["alltext"] = []
@@ -133,23 +161,31 @@ def main():
         )
 
         if orginal_file:
-            with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
-                fp = Path(tmp_file.name)
-                fp.write_bytes(orginal_file.getvalue())
+            if type(orginal_file) == str:
                 query_engine = make_query_engine(
-                    tmp_file.name,
+                    orginal_file,
                     llm=llm,
                     reading=False,
-                    ext=os.path.splitext(orginal_file.name)[1],
+                    name=orginal_file,
                 )
+            else:
+                with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+                    fp = Path(tmp_file.name)
+                    fp.write_bytes(orginal_file.getvalue())
+                    query_engine = make_query_engine(
+                        tmp_file.name,
+                        llm=llm,
+                        reading=False,
+                        name=orginal_file.name,
+                    )
 
         if input_gen_length <= 300:
-            gen_rule = f"初学者が概要を把握できるレベルの資料を{input_gen_length}文字以内で作成してください"
+            gen_rule = f"概要を把握できる資料を{input_gen_length}文字以内で作成してください"
         else:
-            gen_rule = f"{level}が能力を高められる研修資料を{input_gen_length}文字以内で作成してください"
+            gen_rule = f"{level}が効率よく能力を高められる資料を{input_gen_length}文字以内で作成してください"
 
-        instructions = f"""
-あなたは{inputtext}におけるベテランの研修講師です。
+        base_instructions = f"""
+あなたは{inputtext}の専門家です。
 {inputtext}について、{gen_rule}。
 作成に当たっては以下に厳密に従ってください。
 - 指示の最後に[指示：続きを出力]と送られた場合は、[指示：続きを出力]の前の文章の続きを出力する。
@@ -157,6 +193,7 @@ def main():
 - サンプルではなくそのまま利用できる体裁とする。
 - プログラミングやシェルなどコードを入力する内容の場合はコードブロックを利用してサンプルコードを出力する。
 - 出力はMarkdownとする。必要に応じてsummary,detailsなどのHTML要素も組み合わせる。
+- 各説明の後は「例えば○○は...」のように説明した内容の実例を入れる。
 - 各種コンテンツは簡潔かつ詳細に記載する。
 - コンテンツの中盤ではブレイクタイムとして{inputtext}にまつわる豆知識を織り交ぜる。
 - 画像や絵文字、アイコン等を使用し視覚的に興味を引く工夫を行う。
@@ -165,9 +202,24 @@ def main():
 - 各種情報には出典を明記する。
 - セクションごとに理解度を確認する簡単なクイズを作成する。
 - 生成物以外は出力しない（例えば生成物に対するコメントや説明など）
-
-    """
-        original_instructions = f"　ルール:{input_gen_length}文字以内で出力。Markdownで出力。日本語で出力。"
+{supplement}
+"""
+        if orginal_file:
+            instructions = f"　ルール:{input_gen_length}文字以内で出力。Markdownで出力。日本語で出力。{level}向け。{supplement}"
+        elif level == "初心者":
+            instructions = f"""
+{base_instructions}
+- 今後の学習ロードマップを作成する。
+- 次のレベルに進むためのお勧めの教材を紹介する。
+            """
+        elif level == "中上級者":
+            instructions = f"""
+{base_instructions}
+- 基本的は部分の説明は省略する。
+- ニッチな内容や、高度な工夫、活発に議論されているテーマなどを中心にする。
+- 関連する別の分野の研究内容なども紹介する。
+- より深く学習するためのお勧めの資料などを紹介する。
+            """
 
         if inputtext:
             st.session_state["alltext"].append(inputtext)
@@ -192,7 +244,7 @@ def main():
                     message = message[0:3500]
 
                     if orginal_file:
-                        query_engine.query(message + original_instructions)
+                        query_engine.query(message + instructions)
                         break
                     else:
                         completion = chat(
