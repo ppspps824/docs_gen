@@ -3,6 +3,7 @@ import os
 import tempfile
 from pathlib import Path
 
+import faiss
 import openai
 import streamlit as st
 from langchain.callbacks.base import BaseCallbackManager
@@ -17,6 +18,7 @@ from llama_index import (
     load_index_from_storage,
 )
 from llama_index.llm_predictor.chatgpt import ChatGPTLLMPredictor
+from llama_index.vector_stores.faiss import FaissVectorStore
 
 
 def make_query_engine(data, llm, reading, name):
@@ -70,8 +72,15 @@ def make_query_engine(data, llm, reading, name):
             st.error(f"非対応のファイル形式です。：{name}")
             st.stop()
 
+        # dimensions of text-ada-embedding-002
+        d = 1536
+        # コサイン類似度
+        faiss_index = faiss.IndexFlatIP(d)
+        vector_store = FaissVectorStore(faiss_index=faiss_index)
+        storage_context = StorageContext.from_defaults(vector_store=vector_store)
+
         index = GPTVectorStoreIndex.from_documents(
-            documents, service_context=service_context
+            documents, faiss_index=faiss_index, service_context=service_context
         )
         # インデックスの保存
         # index.storage_context.persist()
