@@ -153,7 +153,9 @@ def main():
                     "ファイル", type=["txt", "md", "docx", "pdf", "pptx", "mp3", "mp4"]
                 )
                 if not orginal_file:
-                    orginal_file = st.text_input("URL", help="Youtubeは字幕付動画のみ。")
+                    orginal_file = st.text_input(
+                        "URL (WebSite,Yotube ect)", help="Youtubeは字幕付動画のみ。"
+                    )
 
             reading = True
 
