@@ -155,22 +155,30 @@ def chat(text, settings, max_tokens, model):
             time.sleep(10)
 
 
+def disable():
+    st.session_state.disabled = True
+
+
 def main():
     if "alltext" not in st.session_state:
-        st.session_state["alltext"] = []
+        st.session_state.alltext = []
+        st.session_state.savetext = []
+        st.session_state.disabled = False
     col1, col2, _ = st.columns(3)
     with col2:
-        st.write("#")
-        st.write("#")
-        st.write("# LearnMate.AI ")
+        st.markdown("#")
+        st.markdown("#")
+        st.markdown("# LearnMate.AI ")
     with col1:
         lottie_url = "https://assets9.lottiefiles.com/packages/lf20_glpbhbuh.json"
         lottie_json = load_lottieurl(lottie_url)
         st_lottie(lottie_json, height=200, loop=False)
 
+    message_place = st.empty()
+
     with st.sidebar:
         with st.expander("📚LearnMate.AIとは"):
-            st.write(
+            st.markdown(
                 """
 指定されたテーマについて、選択した形式の資料を生成するAIです。  
 
@@ -209,27 +217,57 @@ def main():
 
             reading = True
 
-            submit = st.form_submit_button("生成開始")
+            submit = st.form_submit_button(
+                "生成開始",  # on_click=disable, disabled=st.session_state.disabled
+            )
 
     if not submit:
         # 紹介動画を流す
         pass
 
+    for info in st.session_state.savetext:
+        t_delta = datetime.timedelta(hours=9)
+        JST = datetime.timezone(t_delta, "JST")
+        now = datetime.datetime.now(JST)
+        with st.expander(f'{info["theme"]}'):
+            if info["origine_name"]:
+                data = (
+                    f"## {info['theme']}"
+                    + "\n"
+                    + f"OriginalSource : {info['origine_name']}"
+                    + "\n"
+                    + info["value"]
+                )
+            else:
+                data = info["theme"] + "\n" + info["value"]
+            st.download_button(
+                "テキストをダウンロード",
+                file_name=f"{info['theme']}_{now.strftime('%Y%m%d%H%M%S')}.md",
+                data=data,
+                mime="text/plain",
+            )
+            st.markdown(f"## {info['theme']}")
+            if info["origine_name"]:
+                st.markdown(f"OriginalSource : {info['origine_name']}")
+            st.markdown(info["value"])
+
     if submit:
         if inputtext:
-            st.session_state["alltext"] = []
-            st.write(f"## テーマ：{inputtext}")
+            st.session_state.alltext = []
+            st.markdown("---")
+            st.markdown(f"## {inputtext}")
+
             if orginal_file:
                 if type(orginal_file) == str:
-                    st.write(f"OriginalSource : {orginal_file}")
+                    st.markdown(f"OriginalSource : {orginal_file}")
                 else:
-                    st.write(f"OriginalSource : {orginal_file.name}")
+                    st.markdown(f"OriginalSource : {orginal_file.name}")
             status_place = st.container()
             lottie_url = "https://assets4.lottiefiles.com/packages/lf20_45movo.json"
             spinner_lottie_json = load_lottieurl(lottie_url)
             with st_lottie_spinner(spinner_lottie_json, height=200):
-                st.write("---")
-                st.session_state["alltext"] = []
+                st.markdown("---")
+                st.session_state.alltext = []
                 llm = ChatOpenAI(
                     temperature=0,
                     model_name=model,
@@ -262,13 +300,13 @@ def main():
                 if input_gen_length <= 300:
                     gen_rule = f"概要を把握できる資料を{input_gen_length}文字以内で作成してください"
                 else:
-                    gen_rule = f"{level}が効率よく能力を高められる資料を{input_gen_length}文字以内で作成してください"
+                    gen_rule = f"詳細をまとめた資料を{input_gen_length}文字以内で作成してください"
 
                 base_instructions = f"""
 あなたは{inputtext}の専門家です。
 {inputtext}について、{gen_rule}。
 作成に当たっては以下に厳密に従ってください。
-- 指示の最後に[続きを出力]と送られた場合は、[続きを出力]の前の文章の続きを出力する。
+- 指示の最後に続きを出力と送られた場合は、続きを出力の前の文章の続きを出力する。
 - step by stepで複数回検討を行い、その中で一番優れていると思う結果を出力する。
 - 出力はMarkdownとする。
 - 生成物以外は出力しない（例えば生成物に対するコメントや説明など）
@@ -304,7 +342,7 @@ def main():
                 elif level == "フリーフォーマット":
                     instructions = base_instructions
 
-                st.session_state["alltext"].append(inputtext)
+                st.session_state.alltext.append(inputtext)
                 text = ""
 
                 new_place = st.empty()
@@ -312,11 +350,11 @@ def main():
                 completion = ""
                 while True:
                     if finish_reason == "init":
-                        message = "".join(st.session_state["alltext"])
+                        message = "".join(st.session_state.alltext)
                     elif finish_reason == "stop":
                         break
                     elif finish_reason == "length":
-                        message = "".join(st.session_state["alltext"]) + "[続きを出力]"
+                        message = "".join(st.session_state.alltext) + "続きを出力"
                     else:
                         st.error(f"エラーが発生しました。finish_reason={finish_reason}")
                         st.stop
@@ -338,10 +376,25 @@ def main():
                             finish_reason = chunk["choices"][0].get("finish_reason", "")
                             next = chunk["choices"][0]["delta"].get("content", "")
                             text += next
-                            text = text.replace("[指示：続きを出力]", "")
+                            text = text.replace("続きを出力", "")
                             new_place.write(text)
 
-                    st.session_state["alltext"].append(text)
+                    st.session_state.alltext.append(text)
+                    origine_name = ""
+                    if orginal_file:
+                        if type(orginal_file) == str:
+                            origine_name = orginal_file
+                        else:
+                            origine_name = orginal_file.nam
+
+                    st.session_state.savetext.append(
+                        {
+                            "theme": inputtext,
+                            "value": text,
+                            "origine_name": origine_name,
+                        }
+                    )
+                    st.session_state.disabled = False
 
                 t_delta = datetime.timedelta(hours=9)
                 JST = datetime.timezone(t_delta, "JST")
@@ -353,14 +406,14 @@ def main():
                     st_lottie(lottie_json, height=100, loop=False)
                     st.download_button(
                         "テキストをダウンロード",
-                        file_name=f"LearnMateAI_{now.strftime('%Y%m%d%H%M%S')}.md",
+                        file_name=f"{inputtext}_{now.strftime('%Y%m%d%H%M%S')}.md",
                         data=response.response
                         if response
-                        else "\n".join(st.session_state["alltext"]),
+                        else "\n".join(st.session_state.alltext),
                         mime="text/plain",
                     )
         else:
-            st.error("テーマを入力してください🤷‍♂️")
+            message_place.error("テーマを入力してください", icon="🥺")
 
 
 if __name__ == "__main__":
