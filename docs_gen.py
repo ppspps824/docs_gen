@@ -241,7 +241,7 @@ def main():
                     fp = Path(tmp_file.name)
                     fp.write_bytes(orginal_file.getvalue())
                     query_engine = make_query_engine(
-                        tmp_file.name,
+                        fp,
                         llm=llm,
                         reading=False,
                         name=orginal_file.name,
@@ -354,7 +354,7 @@ if __name__ == "__main__":
     hide_streamlit_style = """
                 <style>
                .block-container {
-                    padding-top: 1rem;
+                    padding-top: 2rem;
                 }
                 #MainMenu {visibility: hidden;}
                 footer {visibility: hidden;}
