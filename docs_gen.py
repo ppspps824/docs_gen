@@ -138,15 +138,20 @@ def chat(text, settings, max_tokens, model):
             )
             return resp
 
-        except openai.error.APIError:
+        except openai.error.APIError as e:
+            print(e)
+            print(f"retry:{try_time+1}/{try_count}")
             time.sleep(1)
-        except openai.error.InvalidRequestError:
+        except openai.error.InvalidRequestError as e:
+            print(e)
+            print(f"retry:{try_time+1}/{try_count}")
             pass
         except (
             openai.error.RateLimitError,
-            openai.error.RateLimitError,
             openai.error.openai.error.APIConnectionError,
-        ):
+        ) as e:
+            print(e)
+            print(f"retry:{try_time+1}/{try_count}")
             time.sleep(10)
 
 
@@ -163,13 +168,11 @@ def main():
         lottie_json = load_lottieurl(lottie_url)
         st_lottie(lottie_json, height=200, loop=False)
 
-    status_place = st.container()
-
     with st.sidebar:
         with st.expander("📚LearnMate.AIとは"):
             st.write(
                 """
-指定されたテーマと対象者のレベルに沿った資料を生成するAIです。  
+指定されたテーマについて、選択した形式の資料を生成するAIです。  
 
 生成文字数を300文字以内に指定すると概要説明資料を生成し、それ以上あるいは0（指定なし）とすると詳細な資料を生成します。
 ※研修や導入資料として使えるように、理解度を確認するためのクイズ付き
@@ -191,7 +194,7 @@ def main():
             model = st.selectbox("モデルを選択", ["gpt-3.5-turbo", "gpt-4"])
             inputtext = st.text_input("テーマ", help="必須")
             supplement = st.text_area("補足", help="任意")
-            level = st.selectbox("レベルを選択", ["初心者", "中上級者"])
+            level = st.selectbox("形式を選択", ["フリーフォーマット", "入門資料", "中上級者向け資料"])
             input_gen_length = st.number_input(
                 "生成文字数を入力", min_value=0, step=100, value=1000, help="0に設定すると指定なしとなります。"
             )
@@ -216,84 +219,90 @@ def main():
                 st.write(f"OriginalSource : {orginal_file}")
             else:
                 st.write(f"OriginalSource : {orginal_file.name}")
+        status_place = st.container()
+        lottie_url = "https://assets4.lottiefiles.com/packages/lf20_45movo.json"
+        spinner_lottie_json = load_lottieurl(lottie_url)
+        with st_lottie_spinner(spinner_lottie_json, height=200):
+            st.write("---")
+            st.session_state["alltext"] = []
+            llm = ChatOpenAI(
+                temperature=0,
+                model_name=model,
+                streaming=True,
+                max_tokens=2000,
+                callback_manager=BaseCallbackManager(
+                    [WrapStreamlitCallbackHandler()],
+                ),
+            )
 
-        st.session_state["alltext"] = []
-        llm = ChatOpenAI(
-            temperature=0,
-            model_name=model,
-            streaming=True,
-            max_tokens=2000,
-            callback_manager=BaseCallbackManager(
-                [WrapStreamlitCallbackHandler()],
-            ),
-        )
-
-        if orginal_file:
-            if type(orginal_file) == str:
-                query_engine = make_query_engine(
-                    orginal_file,
-                    llm=llm,
-                    reading=False,
-                    name=orginal_file,
-                )
-            else:
-                with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
-                    fp = Path(tmp_file.name)
-                    fp.write_bytes(orginal_file.getvalue())
+            if orginal_file:
+                if type(orginal_file) == str:
                     query_engine = make_query_engine(
-                        fp,
+                        orginal_file,
                         llm=llm,
                         reading=False,
-                        name=orginal_file.name,
+                        name=orginal_file,
                     )
+                else:
+                    with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+                        fp = Path(tmp_file.name)
+                        fp.write_bytes(orginal_file.getvalue())
+                        query_engine = make_query_engine(
+                            fp,
+                            llm=llm,
+                            reading=False,
+                            name=orginal_file.name,
+                        )
 
-        if input_gen_length <= 300:
-            gen_rule = f"概要を把握できる資料を{input_gen_length}文字以内で作成してください"
-        else:
-            gen_rule = f"{level}が効率よく能力を高められる資料を{input_gen_length}文字以内で作成してください"
+            if input_gen_length <= 300:
+                gen_rule = f"概要を把握できる資料を{input_gen_length}文字以内で作成してください"
+            else:
+                gen_rule = f"{level}が効率よく能力を高められる資料を{input_gen_length}文字以内で作成してください"
 
-        base_instructions = f"""
-あなたは{inputtext}の専門家です。
-{inputtext}について、{gen_rule}。
-作成に当たっては以下に厳密に従ってください。
-- 指示の最後に[続きを出力]と送られた場合は、[続きを出力]の前の文章の続きを出力する。
-- step by stepで複数回検討を行い、その中で一番優れていると思う結果を出力する。
-- サンプルではなくそのまま利用できる体裁とし、内容は詳細に記載する。
-- 出力はMarkdownとする。
-- コードブロックを利用してサンプルコードを出力する。
-- 各説明の後は説明した内容の実例を入れる。
-- コンテンツの中盤ではブレイクタイムとして豆知識を織り交ぜる。
-- 画像や絵文字、アイコン等を使用し視覚的に興味を引く工夫を行う。
-- 図やグラフを表示する際はmarmaid.js形式とする。
-- 出典を明記する。
-- セクションごとに理解度を確認する簡単なクイズを作成する。
-- 生成物以外は出力しない（例えば生成物に対するコメントや説明など）
-{supplement}
-"""
-        if orginal_file:
-            instructions = f"　ルール:{input_gen_length}文字以内で出力。Markdownで出力。日本語で出力。{level}向け。{supplement}"
-        elif level == "初心者":
-            instructions = f"""
-{base_instructions}
-- 今後の学習ロードマップを作成する。
-- 次のレベルに進むための教材を紹介する。
+            base_instructions = f"""
+    あなたは{inputtext}の専門家です。
+    {inputtext}について、{gen_rule}。
+    作成に当たっては以下に厳密に従ってください。
+    - 指示の最後に[続きを出力]と送られた場合は、[続きを出力]の前の文章の続きを出力する。
+    - step by stepで複数回検討を行い、その中で一番優れていると思う結果を出力する。
+    - 出力はMarkdownとする。
+    - 生成物以外は出力しない（例えば生成物に対するコメントや説明など）
+    {supplement}
+    """
+            traning_base = """
+    - サンプルではなくそのまま利用できる体裁とし、内容は詳細に記載する。
+    - コードブロックを利用してサンプルコードを出力する。
+    - 各説明の後は説明した内容の実例を入れる。
+    - コンテンツの中盤ではブレイクタイムとして豆知識を織り交ぜる。
+    - 画像や絵文字、アイコン等を使用し視覚的に興味を引く工夫を行う。
+    - 図やグラフを表示する際はmarmaid.js形式とする。
+    - 出典を明記する。
+    - セクションごとに理解度を確認する簡単なクイズを作成する。
             """
-        elif level == "中上級者":
-            instructions = f"""
-{base_instructions}
-- 基本的は部分の説明は省略し、ニッチな内容や高度な技術を中心に構成する。
-- 関連する別の分野の研究内容なども紹介する。
-- より深く学習するための資料などを紹介する。
-            """
+            if orginal_file:
+                instructions = f"　ルール:{input_gen_length}文字以内で出力。Markdownで出力。日本語で出力。{level}向け。{supplement}"
+            elif level == "入門資料":
+                instructions = f"""
+    {base_instructions}
+    {traning_base}
+    - 今後の学習ロードマップを作成する。
+    - 次のレベルに進むための教材を紹介する。
+                """
+            elif level == "中上級者向け資料":
+                instructions = f"""
+    {base_instructions}
+    {traning_base}
+    - 基本的は部分の説明は省略し、ニッチな内容や高度な技術を中心に構成する。
+    - 関連する別の分野の研究内容なども紹介する。
+    - より深く学習するための資料などを紹介する。
+                """
+            elif level == "フリーフォーマット":
+                instructions = base_instructions
 
-        if inputtext:
-            st.session_state["alltext"].append(inputtext)
-            text = ""
+            if inputtext:
+                st.session_state["alltext"].append(inputtext)
+                text = ""
 
-            lottie_url = "https://assets4.lottiefiles.com/packages/lf20_45movo.json"
-            spinner_lottie_json = load_lottieurl(lottie_url)
-
-            with st_lottie_spinner(spinner_lottie_json, height=200):
                 new_place = st.empty()
                 finish_reason = "init"
                 completion = ""
@@ -330,22 +339,22 @@ def main():
 
                     st.session_state["alltext"].append(text)
 
-            t_delta = datetime.timedelta(hours=9)
-            JST = datetime.timezone(t_delta, "JST")
-            now = datetime.datetime.now(JST)
+                t_delta = datetime.timedelta(hours=9)
+                JST = datetime.timezone(t_delta, "JST")
+                now = datetime.datetime.now(JST)
 
-            with status_place:
-                lottie_url = "https://assets2.lottiefiles.com/datafiles/8UjWgBkqvEF5jNoFcXV4sdJ6PXpS6DwF7cK4tzpi/Check Mark Success/Check Mark Success Data.json"
-                lottie_json = load_lottieurl(lottie_url)
-                st_lottie(lottie_json, height=100, loop=False)
-                st.download_button(
-                    "テキストをダウンロード",
-                    file_name=f"LearnMateAI_{now.strftime('%Y%m%d%H%M%S')}.md",
-                    data=response.response
-                    if response
-                    else "\n".join(st.session_state["alltext"]),
-                    mime="text/plain",
-                )
+                with status_place:
+                    lottie_url = "https://assets2.lottiefiles.com/datafiles/8UjWgBkqvEF5jNoFcXV4sdJ6PXpS6DwF7cK4tzpi/Check Mark Success/Check Mark Success Data.json"
+                    lottie_json = load_lottieurl(lottie_url)
+                    st_lottie(lottie_json, height=100, loop=False)
+                    st.download_button(
+                        "テキストをダウンロード",
+                        file_name=f"LearnMateAI_{now.strftime('%Y%m%d%H%M%S')}.md",
+                        data=response.response
+                        if response
+                        else "\n".join(st.session_state["alltext"]),
+                        mime="text/plain",
+                    )
 
 
 if __name__ == "__main__":
