@@ -41,6 +41,8 @@ def load_lottieurl(url: str):
 
 
 def make_query_engine(data, llm, reading, name):
+
+    check_name = name.lower()
     if reading:
         # インデックスの読み込み
         storage_context = StorageContext.from_defaults(persist_dir="./storage")
@@ -55,31 +57,31 @@ def make_query_engine(data, llm, reading, name):
             prompt_helper=prompt_helper,
             chunk_size_limit=512,
         )
-        if ".pdf" in name:
+        if ".pdf" in check_name:
             PDFReader = download_loader("PDFReader")
             loader = PDFReader()
             documents = loader.load_data(file=data)
-        elif any([".txt" in name, ".md" in name]):
+        elif any([".txt" in check_name, ".md" in name]):
             MarkdownReader = download_loader("MarkdownReader")
             loader = MarkdownReader()
             documents = loader.load_data(file=data)
-        elif ".pptx" in name:
+        elif ".pptx" in check_name:
             PptxReader = download_loader("PptxReader")
             loader = PptxReader()
             documents = loader.load_data(file=data)
-        elif ".docx" in name:
+        elif ".docx" in check_name:
             DocxReader = download_loader("DocxReader")
             loader = DocxReader()
             documents = loader.load_data(file=data)
-        elif any([".mp3" in name, ".mp4" in name]):
+        elif any([".mp3" in check_name, ".mp4" in check_name]):
             AudioTranscriber = download_loader("AudioTranscriber")
             loader = AudioTranscriber()
             documents = loader.load_data(file=data)
-        elif "youtu" in name:
+        elif "youtu" in check_name:
             YoutubeTranscriptReader = download_loader("YoutubeTranscriptReader")
             loader = YoutubeTranscriptReader()
             documents = loader.load_data(ytlinks=[name])
-        elif "http" in name:
+        elif "http" in check_name:
             AsyncWebPageReader = download_loader("AsyncWebPageReader")
             loader = AsyncWebPageReader()
             documents = loader.load_data(urls=[name])
