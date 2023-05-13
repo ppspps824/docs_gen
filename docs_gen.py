@@ -211,95 +211,99 @@ def main():
 
             submit = st.form_submit_button("生成開始")
 
-    if submit:
-        st.session_state["alltext"] = []
-        st.write(f"## テーマ：{inputtext}")
-        if orginal_file:
-            if type(orginal_file) == str:
-                st.write(f"OriginalSource : {orginal_file}")
-            else:
-                st.write(f"OriginalSource : {orginal_file.name}")
-        status_place = st.container()
-        lottie_url = "https://assets4.lottiefiles.com/packages/lf20_45movo.json"
-        spinner_lottie_json = load_lottieurl(lottie_url)
-        with st_lottie_spinner(spinner_lottie_json, height=200):
-            st.write("---")
-            st.session_state["alltext"] = []
-            llm = ChatOpenAI(
-                temperature=0,
-                model_name=model,
-                streaming=True,
-                max_tokens=2000,
-                callback_manager=BaseCallbackManager(
-                    [WrapStreamlitCallbackHandler()],
-                ),
-            )
+    if not submit:
+        # 紹介動画を流す
+        pass
 
+    if submit:
+        if inputtext:
+            st.session_state["alltext"] = []
+            st.write(f"## テーマ：{inputtext}")
             if orginal_file:
                 if type(orginal_file) == str:
-                    query_engine = make_query_engine(
-                        orginal_file,
-                        llm=llm,
-                        reading=False,
-                        name=orginal_file,
-                    )
+                    st.write(f"OriginalSource : {orginal_file}")
                 else:
-                    with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
-                        fp = Path(tmp_file.name)
-                        fp.write_bytes(orginal_file.getvalue())
+                    st.write(f"OriginalSource : {orginal_file.name}")
+            status_place = st.container()
+            lottie_url = "https://assets4.lottiefiles.com/packages/lf20_45movo.json"
+            spinner_lottie_json = load_lottieurl(lottie_url)
+            with st_lottie_spinner(spinner_lottie_json, height=200):
+                st.write("---")
+                st.session_state["alltext"] = []
+                llm = ChatOpenAI(
+                    temperature=0,
+                    model_name=model,
+                    streaming=True,
+                    max_tokens=2000,
+                    callback_manager=BaseCallbackManager(
+                        [WrapStreamlitCallbackHandler()],
+                    ),
+                )
+
+                if orginal_file:
+                    if type(orginal_file) == str:
                         query_engine = make_query_engine(
-                            fp,
+                            orginal_file,
                             llm=llm,
                             reading=False,
-                            name=orginal_file.name,
+                            name=orginal_file,
                         )
+                    else:
+                        with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+                            fp = Path(tmp_file.name)
+                            fp.write_bytes(orginal_file.getvalue())
+                            query_engine = make_query_engine(
+                                fp,
+                                llm=llm,
+                                reading=False,
+                                name=orginal_file.name,
+                            )
 
-            if input_gen_length <= 300:
-                gen_rule = f"概要を把握できる資料を{input_gen_length}文字以内で作成してください"
-            else:
-                gen_rule = f"{level}が効率よく能力を高められる資料を{input_gen_length}文字以内で作成してください"
+                if input_gen_length <= 300:
+                    gen_rule = f"概要を把握できる資料を{input_gen_length}文字以内で作成してください"
+                else:
+                    gen_rule = f"{level}が効率よく能力を高められる資料を{input_gen_length}文字以内で作成してください"
 
-            base_instructions = f"""
-    あなたは{inputtext}の専門家です。
-    {inputtext}について、{gen_rule}。
-    作成に当たっては以下に厳密に従ってください。
-    - 指示の最後に[続きを出力]と送られた場合は、[続きを出力]の前の文章の続きを出力する。
-    - step by stepで複数回検討を行い、その中で一番優れていると思う結果を出力する。
-    - 出力はMarkdownとする。
-    - 生成物以外は出力しない（例えば生成物に対するコメントや説明など）
-    {supplement}
-    """
-            traning_base = """
-    - サンプルではなくそのまま利用できる体裁とし、内容は詳細に記載する。
-    - コードブロックを利用してサンプルコードを出力する。
-    - 各説明の後は説明した内容の実例を入れる。
-    - コンテンツの中盤ではブレイクタイムとして豆知識を織り交ぜる。
-    - 画像や絵文字、アイコン等を使用し視覚的に興味を引く工夫を行う。
-    - 図やグラフを表示する際はmarmaid.js形式とする。
-    - 出典を明記する。
-    - セクションごとに理解度を確認する簡単なクイズを作成する。
-            """
-            if orginal_file:
-                instructions = f"　ルール:{input_gen_length}文字以内で出力。Markdownで出力。日本語で出力。{level}向け。{supplement}"
-            elif level == "入門資料":
-                instructions = f"""
-    {base_instructions}
-    {traning_base}
-    - 今後の学習ロードマップを作成する。
-    - 次のレベルに進むための教材を紹介する。
+                base_instructions = f"""
+あなたは{inputtext}の専門家です。
+{inputtext}について、{gen_rule}。
+作成に当たっては以下に厳密に従ってください。
+- 指示の最後に[続きを出力]と送られた場合は、[続きを出力]の前の文章の続きを出力する。
+- step by stepで複数回検討を行い、その中で一番優れていると思う結果を出力する。
+- 出力はMarkdownとする。
+- 生成物以外は出力しない（例えば生成物に対するコメントや説明など）
+        {supplement}
+        """
+                traning_base = """
+- サンプルではなくそのまま利用できる体裁とし、内容は詳細に記載する。
+- コードブロックを利用してサンプルコードを出力する。
+- 各説明の後は説明した内容の実例を入れる。
+- コンテンツの中盤ではブレイクタイムとして豆知識を織り交ぜる。
+- 画像や絵文字、アイコン等を使用し視覚的に興味を引く工夫を行う。
+- 図やグラフを表示する際はmarmaid.js形式とする。
+- 出典を明記する。
+- セクションごとに理解度を確認する簡単なクイズを作成する。
                 """
-            elif level == "中上級者向け資料":
-                instructions = f"""
-    {base_instructions}
-    {traning_base}
-    - 基本的は部分の説明は省略し、ニッチな内容や高度な技術を中心に構成する。
-    - 関連する別の分野の研究内容なども紹介する。
-    - より深く学習するための資料などを紹介する。
-                """
-            elif level == "フリーフォーマット":
-                instructions = base_instructions
+                if orginal_file:
+                    instructions = f"　ルール:{input_gen_length}文字以内で出力。Markdownで出力。日本語で出力。{level}向け。{supplement}"
+                elif level == "入門資料":
+                    instructions = f"""
+{base_instructions}
+{traning_base}
+- 今後の学習ロードマップを作成する。
+- 次のレベルに進むための教材を紹介する。
+                    """
+                elif level == "中上級者向け資料":
+                    instructions = f"""
+{base_instructions}
+{traning_base}
+- 基本的は部分の説明は省略し、ニッチな内容や高度な技術を中心に構成する。
+- 関連する別の分野の研究内容なども紹介する。
+- より深く学習するための資料などを紹介する。
+                    """
+                elif level == "フリーフォーマット":
+                    instructions = base_instructions
 
-            if inputtext:
                 st.session_state["alltext"].append(inputtext)
                 text = ""
 
@@ -355,6 +359,8 @@ def main():
                         else "\n".join(st.session_state["alltext"]),
                         mime="text/plain",
                     )
+        else:
+            st.error("テーマを入力してください🤷‍♂️")
 
 
 if __name__ == "__main__":
