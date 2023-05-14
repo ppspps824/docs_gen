@@ -9,9 +9,15 @@ import faiss
 import openai
 import requests
 import streamlit as st
+from langchain.agents import AgentType, initialize_agent, load_tools
 from langchain.callbacks.base import BaseCallbackManager
 from langchain.callbacks.streamlit import StreamlitCallbackHandler
 from langchain.chat_models import ChatOpenAI
+from langchain.prompts import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    SystemMessagePromptTemplate,
+)
 from llama_index import (
     GPTVectorStoreIndex,
     PromptHelper,
@@ -119,7 +125,40 @@ def make_query_engine(data, llm, reading, name):
 
 
 def chat(text, settings, max_tokens, model):
+    # # 使用するツールをロード
+    # tools = ["google-search", "python_repl"]
+    # tools = load_tools(tools, llm=model)
 
+    # system_template = settings
+    # human_template = "質問者：{question}"
+    # system_message_prompt = SystemMessagePromptTemplate.from_template(system_template)
+    # human_message_prompt = HumanMessagePromptTemplate.from_template(human_template)
+
+    # chat_prompt = ChatPromptTemplate.from_messages(
+    #     [system_message_prompt, human_message_prompt]
+    # )
+    # prompt_message_list = chat_prompt.format_prompt(
+    #     language="日本語", question=text
+    # ).to_messages()
+    # print(prompt_message_list)
+    # try:
+    #     agent = initialize_agent(
+    #         tools=tools,
+    #         llm=model,
+    #         agent=AgentType.ZERO_SHOT_REACT_DESCRIPTION,
+    #         verbose=True,
+    #     )
+    #     response = agent.run(prompt_message_list)
+
+    # except Exception as e:
+    #     response = str(e)
+    #     if not response.startswith("Could not parse LLM output: `"):
+    #         raise e
+    #     response = response.removeprefix("Could not parse LLM output: `").removesuffix(
+    #         "`"
+    #     )
+
+    # return response
     messages = [
         {"role": "system", "content": settings},
         {"role": "user", "content": text},
@@ -225,7 +264,7 @@ def main():
         # 紹介動画を流す
         pass
 
-    for info in st.session_state.savetext:
+    for no, info in enumerate(st.session_state.savetext):
         t_delta = datetime.timedelta(hours=9)
         JST = datetime.timezone(t_delta, "JST")
         now = datetime.datetime.now(JST)
@@ -245,6 +284,7 @@ def main():
                 file_name=f"{info['theme']}_{now.strftime('%Y%m%d%H%M%S')}.md",
                 data=data,
                 mime="text/plain",
+                key=f"old_text{no}",
             )
             st.markdown(f"## {info['theme']}")
             if info["origine_name"]:
@@ -411,6 +451,7 @@ def main():
                         if response
                         else "\n".join(st.session_state.alltext),
                         mime="text/plain",
+                        key="current_text",
                     )
         else:
             message_place.error("テーマを入力してください", icon="🥺")
@@ -430,7 +471,8 @@ if __name__ == "__main__":
                 """
     st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
-    openai.api_key = st.secrets["OPEN_AI_KEY"]
     os.environ["OPENAI_API_KEY"] = st.secrets["OPEN_AI_KEY"]
+    os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
+    os.environ["GOOGLE_CSE_ID"] = st.secrets["GOOGLE_CSE_ID"]
 
     main()
