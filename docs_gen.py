@@ -127,7 +127,7 @@ def make_query_engine(data, llm, reading, name):
     return query_engine
 
 
-def chat(text, settings, max_tokens, model):
+def chat(text, settings, model):
     # # 使用するツールをロード
     # tools = ["google-search", "python_repl"]
     # tools = load_tools(tools, llm=model)
@@ -174,7 +174,6 @@ def chat(text, settings, max_tokens, model):
             resp = openai.ChatCompletion.create(
                 model=model,
                 messages=messages,
-                max_tokens=max_tokens,
                 stream=True,
                 timeout=120,
                 request_timeout=120,
@@ -255,8 +254,8 @@ def main():
         "感情分析",
         "プラジャリズム検出",
         "コード説明",
-        "コードレビュー",
-        "コメント付与・型ヒント付与",
+        "コードレビュー・リファクタリング",
+        "テスト生成",
     ]
 
     with open("preset.json", encoding="utf-8") as f1:
@@ -280,7 +279,7 @@ def main():
             with st.form("tab1"):
                 inputtext = st.text_input("テーマ", help="生成したいドキュメントのテーマを記入。必須項目。")
                 supplement1 = st.text_area(
-                    "補足", help="取り込んで欲しい内容、取り込んで欲しくない内容、その他指示を記入"
+                    "追加指示", help="取り込んで欲しい内容、取り込んで欲しくない内容、その他指示を記入"
                 )
                 select_preset1 = st.selectbox("ジャンル", preset_file["genre"].keys())
                 input_gen_length = st.number_input(
@@ -299,8 +298,8 @@ def main():
 
         with tab2:
             with st.form("tab2"):
-                supplement2 = st.text_area("入力")
                 select_preset2 = st.selectbox("アクション", preset_file["action"].keys())
+                supplement2 = st.text_area("追加指示", help="任意")
                 orginal_file = st.file_uploader("ファイル")
                 if not orginal_file:
                     orginal_file = st.text_input(
@@ -342,9 +341,11 @@ def main():
         t_delta = datetime.timedelta(hours=9)
         JST = datetime.timezone(t_delta, "JST")
         now = datetime.datetime.now(JST)
-        with st.expander(f'{info["theme"]}'):
+        with st.expander(f'{info["theme"]}:{info["origine_name"]}'):
             if info["origine_name"]:
-                data = f"## {info['theme']}:{info['origine_name']} + '\n' + {info['value']}"
+                data = (
+                    f"## {info['theme']}:{info['origine_name']} + \n + {info['value']}"
+                )
             else:
                 data = info["theme"] + "\n" + info["value"]
             st.download_button(
@@ -356,7 +357,7 @@ def main():
             )
             if info["origine_name"]:
                 st.markdown(
-                    f"## {info['theme']}:{info['origine_name']} + '\n' + {info['value']}"
+                    f"## {info['theme']}:{info['origine_name']} + \n + {info['value']}"
                 )
             else:
                 st.markdown(f"## {info['theme']}")
@@ -460,7 +461,10 @@ def main():
                     st.error(f"エラーが発生しました。finish_reason={finish_reason}")
                     st.stop
 
-                message = message[0:3500]
+                if model == "gpt-3.5-turbo":
+                    message = message[-2500:]
+                else:
+                    message = message[-6500:]
 
                 response = ""
                 if all(
@@ -475,7 +479,6 @@ def main():
                     completion = chat(
                         text=message,
                         settings=instructions,
-                        max_tokens=3500,
                         model=model,
                     )
                     for chunk in completion:
@@ -529,7 +532,7 @@ if __name__ == "__main__":
     hide_streamlit_style = """
                 <style>
                .block-container {
-                    padding-top: 0rem;
+                    padding-top: 1rem;
                 }
                 #MainMenu {visibility: hidden;}
                 footer {visibility: hidden;}
