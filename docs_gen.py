@@ -350,11 +350,9 @@ def main():
         t_delta = datetime.timedelta(hours=9)
         JST = datetime.timezone(t_delta, "JST")
         now = datetime.datetime.now(JST)
-        with st.expander(f'{info["theme"]}:{info["origine_name"]}'):
+        with st.expander(f'{info["theme"]} : {info["origine_name"]}'):
             if info["origine_name"]:
-                data = (
-                    f"## {info['theme']}:{info['origine_name']} + \n + {info['value']}"
-                )
+                data = f"## {info['theme']} : {info['origine_name']}\n{info['value']}"
             else:
                 data = info["theme"] + "\n" + info["value"]
             st.download_button(
@@ -366,7 +364,7 @@ def main():
             )
             if info["origine_name"]:
                 st.markdown(
-                    f"## {info['theme']}:{info['origine_name']} + \n + {info['value']}"
+                    f"## {info['theme']} : {info['origine_name']}\n{info['value']}"
                 )
             else:
                 st.markdown(f"## {info['theme']}")
@@ -505,7 +503,7 @@ def main():
                     else:
                         origine_name = orginal_file.name
                 else:
-                    origine_name = orginal_file
+                    origine_name = select_preset
 
                 st.session_state.savetext.append(
                     {
