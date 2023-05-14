@@ -1,4 +1,5 @@
 import datetime
+import json
 import os
 import tempfile
 import time
@@ -199,9 +200,11 @@ def disable():
 
 
 def create_messages(
-    input_gen_length=0, inputtext="", supplement="", level="", orginal_file=None
+    input_gen_length, inputtext, supplement, genre, action, orginal_file
 ):
-    if input_gen_length <= 300:
+    if input_gen_length == 0:
+        gen_rule = "詳細をまとめた資料を作成してください"
+    elif input_gen_length <= 300:
         gen_rule = f"概要を把握できる資料を{input_gen_length}文字以内で作成してください"
     else:
         gen_rule = f"詳細をまとめた資料を{input_gen_length}文字以内で作成してください"
@@ -254,47 +257,41 @@ def main():
         st.session_state.alltext = []
         st.session_state.savetext = []
         st.session_state.disabled = False
+    with open("genre.json", encoding="utf-8") as f1:
+        genre_file = json.loads(f1.read())
+    genre = genre_file.keys()
+    with open("action.json", encoding="utf-8") as f2:
+        action_file = json.loads(f2.read())
+
+    input_gen_length = 0
+    inputtext = ""
+    supplement = ""
+    genre = ""
+    action = ""
+    orginal_file = ""
+
+    genre = genre_file.keys()
+    action = action_file.keys()
+
     col1, col2, _ = st.columns(3)
     with col2:
-        st.markdown("#")
         st.markdown("#")
         st.markdown("# LearnMate.AI ")
     with col1:
         lottie_url = "https://assets9.lottiefiles.com/packages/lf20_glpbhbuh.json"
         lottie_json = load_lottieurl(lottie_url)
-        st_lottie(lottie_json, height=200, loop=False)
+        st_lottie(lottie_json, height=150, loop=False)
 
     message_place = st.empty()
 
     with st.sidebar:
-        tab1, tab2, tab3 = st.tabs(["About", "資料作成", "対話検索"])
+        tab1, tab2 = st.tabs(["ドキュメント生成", "独自データ"])
         with tab1:
-            st.markdown("## 📚LearnMate.AIとは")
-            st.markdown(
-                """
-    指定されたテーマについて、選択した形式の資料を生成するAIです。  
-
-    生成文字数を300文字以内に指定すると概要説明資料を生成し、それ以上あるいは0（指定なし）とすると詳細な資料を生成します。
-    ※研修や導入資料として使えるように、理解度を確認するためのクイズ付き
-
-    独自データ（txt,docx,pdf,pptx,mp3,ウェブページ,Youtube）をもとにガイドを作成することもできます。
-
-    > 活用例
-    > - 特定のテーマに沿った研修資料作成
-    > - 自己学習用の資料作成
-    > - 社内資料をもとに新規参入者の受入資料作成、マニュアルの作成  
-    > - 会議の録音データを元に議事録を作成  
-    > - ウェブページの要約  
-    > - Youtube動画の要約（字幕付き動画のみ）
-    """
-            )
-            st.caption("*powered by GPT-3,GPT-4*")
-        with tab2:
             with st.form("tab2"):
                 model = st.selectbox("モデルを選択", ["gpt-3.5-turbo", "gpt-4"])
                 inputtext = st.text_input("テーマ", help="必須")
                 supplement = st.text_area("補足", help="任意")
-                level = st.selectbox("形式を選択", ["フリーフォーマット", "入門資料", "中上級者向け資料"])
+                genre = st.selectbox("ジャンル", genre)
                 input_gen_length = st.number_input(
                     "生成文字数を入力",
                     min_value=0,
@@ -309,10 +306,11 @@ def main():
                     "生成開始",  # on_click=disable, disabled=st.session_state.disabled
                 )
 
-        with tab3:
+        with tab2:
             with st.form("tab3"):
                 model = st.selectbox("モデルを選択", ["gpt-3.5-turbo", "gpt-4"])
                 inputtext = st.text_area("入力")
+                action = st.selectbox("アクション", action)
                 orginal_file = st.file_uploader(
                     "ファイル", type=["txt", "md", "docx", "pdf", "pptx", "mp3", "mp4"]
                 )
@@ -328,8 +326,30 @@ def main():
                 )
 
     if not submit:
-        # 紹介動画を流す
-        pass
+        st.markdown("## 📚LearnMate.AIとは")
+        st.markdown(
+            """
+指定されたテーマについて、選択した形式の資料を生成するAIです。  
+
+1. ドキュメント生成 :特定のテーマについてまとめた資料を生成する
+
+2. 独自データ :独自のデータに対して検索、要約などを行う
+
+生成文字数を300文字以内に指定すると概要説明資料を生成し、それ以上あるいは0（指定なし）とすると詳細な資料を生成します。
+※研修や導入資料として使えるように、理解度を確認するためのクイズ付き
+
+独自データ（txt,docx,pdf,pptx,mp3,ウェブページ,Youtube）をもとにガイドを作成することもできます。
+
+> 活用例
+> - 特定のテーマに沿った研修資料作成
+> - 自己学習用の資料作成
+> - 社内資料をもとに新規参入者の受入資料作成、マニュアルの作成  
+> - 会議の録音データを元に議事録を作成  
+> - ウェブページの要約  
+> - Youtube動画の要約（字幕付き動画のみ）
+"""
+        )
+        st.caption("*powered by GPT-3,GPT-4*")
 
     for no, info in enumerate(st.session_state.savetext):
         t_delta = datetime.timedelta(hours=9)
@@ -360,7 +380,7 @@ def main():
 
     if submit:
         instructions = create_messages(
-            input_gen_length, inputtext, supplement, level, orginal_file
+            input_gen_length, inputtext, supplement, genre, action, orginal_file
         )
         if inputtext:
             st.session_state.alltext = []
@@ -488,7 +508,7 @@ if __name__ == "__main__":
     hide_streamlit_style = """
                 <style>
                .block-container {
-                    padding-top: 2rem;
+                    padding-top: 0rem;
                 }
                 #MainMenu {visibility: hidden;}
                 footer {visibility: hidden;}
