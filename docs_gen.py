@@ -1,4 +1,5 @@
 import datetime
+import io
 import json
 import os
 import tempfile
@@ -8,6 +9,7 @@ from typing import Any, Dict, List
 
 import faiss
 import openai
+import python_minifier
 import requests
 import streamlit as st
 from langchain.agents import AgentType, initialize_agent, load_tools
@@ -166,6 +168,7 @@ def chat(text, settings, max_tokens, model):
     ]
 
     try_count = 3
+    error_mes = ""
     for try_time in range(try_count):
         try:
             resp = openai.ChatCompletion.create(
@@ -181,10 +184,12 @@ def chat(text, settings, max_tokens, model):
         except openai.error.APIError as e:
             print(e)
             print(f"retry:{try_time+1}/{try_count}")
+            error_mes = e
             time.sleep(1)
         except openai.error.InvalidRequestError as e:
             print(e)
             print(f"retry:{try_time+1}/{try_count}")
+            error_mes = e
             pass
         except (
             openai.error.RateLimitError,
@@ -192,7 +197,11 @@ def chat(text, settings, max_tokens, model):
         ) as e:
             print(e)
             print(f"retry:{try_time+1}/{try_count}")
+            error_mes = e
             time.sleep(10)
+
+    st.error(error_mes)
+    st.stop()
 
 
 def disable():
@@ -200,54 +209,29 @@ def disable():
 
 
 def create_messages(
-    input_gen_length, inputtext, supplement, genre, action, orginal_file
+    input_gen_length,
+    inputtext,
+    supplement,
+    select_preset,
+    orginal_file,
+    preset_file,
 ):
-    if input_gen_length == 0:
-        gen_rule = "詳細をまとめた資料を作成してください"
-    elif input_gen_length <= 300:
-        gen_rule = f"概要を把握できる資料を{input_gen_length}文字以内で作成してください"
-    else:
-        gen_rule = f"詳細をまとめた資料を{input_gen_length}文字以内で作成してください"
-
-    base_instructions = f"""
+    instructions = f"""
 あなたは{inputtext}の専門家です。
-{inputtext}について、{gen_rule}。
 作成に当たっては以下に厳密に従ってください。
+- 文字数は{input_gen_length}
 - 指示の最後に続きを出力と送られた場合は、続きを出力の前の文章の続きを出力する。
 - step by stepで複数回検討を行い、その中で一番優れていると思う結果を出力する。
+- サンプルではなくそのまま利用できる体裁とする。
 - 出力はMarkdownとする。
 - 生成物以外は出力しない（例えば生成物に対するコメントや説明など）
         {supplement}
+        {preset_file["genre"].get(select_preset,"")}
         """
-    traning_base = """
-- サンプルではなくそのまま利用できる体裁とし、内容は詳細に記載する。
-- コードブロックを利用してサンプルコードを出力する。
-- 各説明の後は説明した内容の実例を入れる。
-- コンテンツの中盤ではブレイクタイムとして豆知識を織り交ぜる。
-- 画像や絵文字、アイコン等を使用し視覚的に興味を引く工夫を行う。
-- 図やグラフを表示する際はmarmaid.js形式とする。
-- 出典を明記する。
-- セクションごとに理解度を確認する簡単なクイズを作成する。
-                """
     if orginal_file:
-        instructions = f"　ルール:Markdownで出力。日本語で出力。{supplement}"
-    elif level == "入門資料":
         instructions = f"""
-{base_instructions}
-{traning_base}
-- 今後の学習ロードマップを作成する。
-- 次のレベルに進むための教材を紹介する。
-                    """
-    elif level == "中上級者向け資料":
-        instructions = f"""
-{base_instructions}
-{traning_base}
-- 基本的は部分の説明は省略し、ニッチな内容や高度な技術を中心に構成する。
-- 関連する別の分野の研究内容なども紹介する。
-- より深く学習するための資料などを紹介する。
-                    """
-    elif level == "フリーフォーマット":
-        instructions = base_instructions
+ルール:Markdownで出力。日本語で出力。{supplement} {preset_file["action"].get(select_preset,"")}
+"""
 
     return instructions
 
@@ -257,21 +241,26 @@ def main():
         st.session_state.alltext = []
         st.session_state.savetext = []
         st.session_state.disabled = False
-    with open("genre.json", encoding="utf-8") as f1:
-        genre_file = json.loads(f1.read())
-    genre = genre_file.keys()
-    with open("action.json", encoding="utf-8") as f2:
-        action_file = json.loads(f2.read())
 
     input_gen_length = 0
     inputtext = ""
     supplement = ""
-    genre = ""
-    action = ""
-    orginal_file = ""
+    select_preset = ""
+    orginal_file = None
+    preset_file = None
 
-    genre = genre_file.keys()
-    action = action_file.keys()
+    # 独自データのうち、インデックスを使用せず全量をmessageとして送信する対象
+    special_actions = [
+        "改善提案",
+        "感情分析",
+        "プラジャリズム検出",
+        "コード説明",
+        "コードレビュー",
+        "コメント付与・型ヒント付与",
+    ]
+
+    with open("preset.json", encoding="utf-8") as f1:
+        preset_file = json.loads(f1.read())
 
     col1, col2, _ = st.columns(3)
     with col2:
@@ -285,35 +274,34 @@ def main():
     message_place = st.empty()
 
     with st.sidebar:
+        model = st.selectbox("モデルを選択", ["gpt-3.5-turbo", "gpt-4"])
         tab1, tab2 = st.tabs(["ドキュメント生成", "独自データ"])
         with tab1:
-            with st.form("tab2"):
-                model = st.selectbox("モデルを選択", ["gpt-3.5-turbo", "gpt-4"])
-                inputtext = st.text_input("テーマ", help="必須")
-                supplement = st.text_area("補足", help="任意")
-                genre = st.selectbox("ジャンル", genre)
+            with st.form("tab1"):
+                inputtext = st.text_input("テーマ", help="生成したいドキュメントのテーマを記入。必須項目。")
+                supplement1 = st.text_area(
+                    "補足", help="取り込んで欲しい内容、取り込んで欲しくない内容、その他指示を記入"
+                )
+                select_preset1 = st.selectbox("ジャンル", preset_file["genre"].keys())
                 input_gen_length = st.number_input(
                     "生成文字数を入力",
                     min_value=0,
                     step=100,
-                    value=1000,
+                    value=3000,
                     help="0に設定すると指定なしとなります。",
                 )
 
                 reading = True
 
-                submit = st.form_submit_button(
+                submit1 = st.form_submit_button(
                     "生成開始",  # on_click=disable, disabled=st.session_state.disabled
                 )
 
         with tab2:
-            with st.form("tab3"):
-                model = st.selectbox("モデルを選択", ["gpt-3.5-turbo", "gpt-4"])
-                inputtext = st.text_area("入力")
-                action = st.selectbox("アクション", action)
-                orginal_file = st.file_uploader(
-                    "ファイル", type=["txt", "md", "docx", "pdf", "pptx", "mp3", "mp4"]
-                )
+            with st.form("tab2"):
+                supplement2 = st.text_area("入力")
+                select_preset2 = st.selectbox("アクション", preset_file["action"].keys())
+                orginal_file = st.file_uploader("ファイル")
                 if not orginal_file:
                     orginal_file = st.text_input(
                         "URL (WebSite,Youtube...)", help="Youtubeは字幕付動画のみ。"
@@ -321,12 +309,11 @@ def main():
 
                 reading = True
 
-                submit = st.form_submit_button(
+                submit2 = st.form_submit_button(
                     "生成開始",  # on_click=disable, disabled=st.session_state.disabled
                 )
 
-    if not submit:
-        st.markdown("## 📚LearnMate.AIとは")
+    with st.expander("📚LearnMate.AIとは"):
         st.markdown(
             """
 指定されたテーマについて、選択した形式の資料を生成するAIです。  
@@ -357,13 +344,7 @@ def main():
         now = datetime.datetime.now(JST)
         with st.expander(f'{info["theme"]}'):
             if info["origine_name"]:
-                data = (
-                    f"## {info['theme']}"
-                    + "\n"
-                    + f"OriginalSource : {info['origine_name']}"
-                    + "\n"
-                    + info["value"]
-                )
+                data = f"## {info['theme']}:{info['origine_name']} + '\n' + {info['value']}"
             else:
                 data = info["theme"] + "\n" + info["value"]
             st.download_button(
@@ -373,133 +354,173 @@ def main():
                 mime="text/plain",
                 key=f"old_text{no}",
             )
-            st.markdown(f"## {info['theme']}")
             if info["origine_name"]:
-                st.markdown(f"OriginalSource : {info['origine_name']}")
+                st.markdown(
+                    f"## {info['theme']}:{info['origine_name']} + '\n' + {info['value']}"
+                )
+            else:
+                st.markdown(f"## {info['theme']}")
             st.markdown(info["value"])
 
-    if submit:
+    if any([submit1, submit2]):
+        if submit1:
+            supplement = supplement1
+            select_preset = select_preset1
+            if not inputtext:
+                message_place.error("テーマを入力してください", icon="🥺")
+                st.stop()
+
+        if submit2:
+            supplement = supplement2
+            select_preset = select_preset2
+            inputtext = select_preset2
+
         instructions = create_messages(
-            input_gen_length, inputtext, supplement, genre, action, orginal_file
+            input_gen_length,
+            inputtext,
+            supplement,
+            select_preset,
+            orginal_file,
+            preset_file,
         )
-        if inputtext:
-            st.session_state.alltext = []
-            st.markdown("---")
+
+        st.session_state.alltext = []
+        st.markdown("---")
+        if orginal_file:
+            if type(orginal_file) == str:
+                st.markdown(f"## {inputtext} : {orginal_file}")
+            else:
+                st.markdown(f"## {inputtext} : {orginal_file.name}")
+        else:
             st.markdown(f"## {inputtext}")
 
-            if orginal_file:
-                if type(orginal_file) == str:
-                    st.markdown(f"OriginalSource : {orginal_file}")
-                else:
-                    st.markdown(f"OriginalSource : {orginal_file.name}")
-            status_place = st.container()
-            lottie_url = "https://assets4.lottiefiles.com/packages/lf20_45movo.json"
-            spinner_lottie_json = load_lottieurl(lottie_url)
-            with st_lottie_spinner(spinner_lottie_json, height=200):
-                st.markdown("---")
-                st.session_state.alltext = []
-                llm = ChatOpenAI(
-                    temperature=0,
-                    model_name=model,
-                    streaming=True,
-                    max_tokens=2000,
-                    callback_manager=BaseCallbackManager(
-                        [WrapStreamlitCallbackHandler()],
-                    ),
-                )
+        status_place = st.container()
+        lottie_url = "https://assets4.lottiefiles.com/packages/lf20_45movo.json"
+        spinner_lottie_json = load_lottieurl(lottie_url)
+        with st_lottie_spinner(spinner_lottie_json, height=200):
+            st.markdown("---")
+            st.session_state.alltext = []
+            llm = ChatOpenAI(
+                temperature=0,
+                model_name=model,
+                streaming=True,
+                max_tokens=2000,
+                callback_manager=BaseCallbackManager(
+                    [WrapStreamlitCallbackHandler()],
+                ),
+            )
 
-                if orginal_file:
-                    if type(orginal_file) == str:
+            if all(
+                [
+                    orginal_file,
+                    select_preset not in special_actions,
+                ]
+            ):
+                if type(orginal_file) == str:
+                    query_engine = make_query_engine(
+                        orginal_file,
+                        llm=llm,
+                        reading=False,
+                        name=orginal_file,
+                    )
+                else:
+                    with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
+                        fp = Path(tmp_file.name)
+                        fp.write_bytes(orginal_file.getvalue())
                         query_engine = make_query_engine(
-                            orginal_file,
+                            fp,
                             llm=llm,
                             reading=False,
-                            name=orginal_file,
+                            name=orginal_file.name,
                         )
-                    else:
-                        with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
-                            fp = Path(tmp_file.name)
-                            fp.write_bytes(orginal_file.getvalue())
-                            query_engine = make_query_engine(
-                                fp,
-                                llm=llm,
-                                reading=False,
-                                name=orginal_file.name,
-                            )
-
+            if select_preset in special_actions:
+                st.session_state.alltext.append(
+                    preset_file["action"][select_preset]
+                    + "\n------------\n"
+                    + python_minifier.minify(
+                        io.StringIO(orginal_file.getvalue().decode("utf-8")).read()
+                    )
+                )
+            else:
                 st.session_state.alltext.append(inputtext)
-                text = ""
 
-                new_place = st.empty()
-                finish_reason = "init"
-                completion = ""
-                while True:
-                    if finish_reason == "init":
-                        message = "".join(st.session_state.alltext)
-                    elif finish_reason == "stop":
-                        break
-                    elif finish_reason == "length":
-                        message = "".join(st.session_state.alltext) + "続きを出力"
-                    else:
-                        st.error(f"エラーが発生しました。finish_reason={finish_reason}")
-                        st.stop
+            text = ""
 
-                    message = message[0:3500]
+            new_place = st.empty()
+            finish_reason = "init"
+            completion = ""
+            while True:
+                if finish_reason == "init":
+                    message = "".join(st.session_state.alltext)
+                elif finish_reason == "stop":
+                    break
+                elif finish_reason == "length":
+                    message = "".join(st.session_state.alltext) + "続きを出力"
+                else:
+                    st.error(f"エラーが発生しました。finish_reason={finish_reason}")
+                    st.stop
 
-                    response = ""
-                    if orginal_file:
-                        response = query_engine.query(message + instructions)
-                        break
-                    else:
-                        completion = chat(
-                            text=message,
-                            settings=instructions,
-                            max_tokens=3500,
-                            model=model,
-                        )
-                        for chunk in completion:
-                            finish_reason = chunk["choices"][0].get("finish_reason", "")
-                            next = chunk["choices"][0]["delta"].get("content", "")
-                            text += next
-                            text = text.replace("続きを出力", "")
-                            new_place.write(text)
+                message = message[0:3500]
 
-                    st.session_state.alltext.append(text)
-                    origine_name = ""
-                    if orginal_file:
-                        if type(orginal_file) == str:
-                            origine_name = orginal_file
-                        else:
-                            origine_name = orginal_file.nam
-
-                    st.session_state.savetext.append(
-                        {
-                            "theme": inputtext,
-                            "value": text,
-                            "origine_name": origine_name,
-                        }
+                response = ""
+                if all(
+                    [
+                        orginal_file,
+                        select_preset not in special_actions,
+                    ]
+                ):
+                    response = query_engine.query(message + instructions)
+                    break
+                else:
+                    completion = chat(
+                        text=message,
+                        settings=instructions,
+                        max_tokens=3500,
+                        model=model,
                     )
-                    st.session_state.disabled = False
+                    for chunk in completion:
+                        finish_reason = chunk["choices"][0].get("finish_reason", "")
+                        next = chunk["choices"][0]["delta"].get("content", "")
+                        text += next
+                        text = text.replace("続きを出力", "")
+                        new_place.write(text)
 
-                t_delta = datetime.timedelta(hours=9)
-                JST = datetime.timezone(t_delta, "JST")
-                now = datetime.datetime.now(JST)
+                st.session_state.alltext.append(text)
+                origine_name = ""
+                if orginal_file:
+                    if type(orginal_file) == str:
+                        origine_name = orginal_file
+                    else:
+                        origine_name = orginal_file.name
+                else:
+                    origine_name = orginal_file.name
 
-                with status_place:
-                    lottie_url = "https://assets2.lottiefiles.com/datafiles/8UjWgBkqvEF5jNoFcXV4sdJ6PXpS6DwF7cK4tzpi/Check Mark Success/Check Mark Success Data.json"
-                    lottie_json = load_lottieurl(lottie_url)
-                    st_lottie(lottie_json, height=100, loop=False)
-                    st.download_button(
-                        "テキストをダウンロード",
-                        file_name=f"{inputtext}_{now.strftime('%Y%m%d%H%M%S')}.md",
-                        data=response.response
-                        if response
-                        else "\n".join(st.session_state.alltext),
-                        mime="text/plain",
-                        key="current_text",
-                    )
-        else:
-            message_place.error("テーマを入力してください", icon="🥺")
+                st.session_state.savetext.append(
+                    {
+                        "theme": inputtext,
+                        "value": text,
+                        "origine_name": origine_name,
+                    }
+                )
+                st.session_state.disabled = False
+
+            t_delta = datetime.timedelta(hours=9)
+            JST = datetime.timezone(t_delta, "JST")
+            now = datetime.datetime.now(JST)
+
+            with status_place:
+                lottie_url = "https://assets2.lottiefiles.com/datafiles/8UjWgBkqvEF5jNoFcXV4sdJ6PXpS6DwF7cK4tzpi/Check Mark Success/Check Mark Success Data.json"
+                lottie_json = load_lottieurl(lottie_url)
+                st_lottie(lottie_json, height=100, loop=False)
+                st.download_button(
+                    "テキストをダウンロード",
+                    file_name=f"{inputtext}_{now.strftime('%Y%m%d%H%M%S')}.md",
+                    data=response.response
+                    if response
+                    else "\n".join(st.session_state.alltext),
+                    mime="text/plain",
+                    key="current_text",
+                )
 
 
 if __name__ == "__main__":

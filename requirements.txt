@@ -4,3 +4,4 @@ llama_index
 faiss-cpu
 streamlit-lottie
 google-api-python-client
+python-minifier
