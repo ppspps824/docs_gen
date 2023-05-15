@@ -543,7 +543,7 @@ if __name__ == "__main__":
     hide_streamlit_style = """
                 <style>
                .block-container {
-                    padding-top: 1rem;
+                    padding-top: 2rem;
                 }
                 #MainMenu {visibility: hidden;}
                 footer {visibility: hidden;}
