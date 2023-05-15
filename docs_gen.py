@@ -124,7 +124,7 @@ def make_query_engine(data, llm, reading, name):
         similarity_top_k=3,
     )
 
-    return query_engine
+    return query_engine, documents
 
 
 def chat(text, settings, model):
@@ -215,22 +215,27 @@ def create_messages(
     orginal_file,
     preset_file,
 ):
-    instructions = f"""
+    if select_preset == "質問":
+        instructions = f"""
+ルール:Markdownで出力。日本語で出力。{supplement} \n{preset_file["action"][select_preset]["prompt"]}
+"""
+    else:
+        prompt = (
+            preset_file["action"][select_preset]["prompt"]
+            if orginal_file
+            else preset_file["genre"][select_preset]["prompt"]
+        )
+        instructions = f"""
 あなたは{inputtext}の専門家です。
 作成に当たっては以下に厳密に従ってください。
 - 文字数は{input_gen_length}とする。
 - 指示の最後に続きを出力と送られた場合は、続きを出力の前の文章の続きを出力する。
 - step by stepで複数回検討を行い、その中で一番優れていると思う結果を出力する。
-- サンプルではなくそのまま利用できる体裁とする。
 - 出力はMarkdownとする。
 - 生成物以外は出力しない（例えば生成物に対するコメントや説明など）
-        {supplement}
-        {preset_file["genre"].get(select_preset,"")}
-        """
-    if orginal_file:
-        instructions = f"""
-ルール:Markdownで出力。日本語で出力。{supplement} {preset_file["action"].get(select_preset,"")}
-"""
+{supplement}
+{prompt}
+            """
 
     return instructions
 
@@ -248,24 +253,23 @@ def main():
     orginal_file = None
     preset_file = None
 
-    # 独自データのうち、インデックスを使用せず全量をmessageとして送信する対象
-    special_actions = [
-        "改善提案",
-        "感情分析",
-        "プラジャリズム検出",
-        "コード説明",
-        "コードレビュー・リファクタリング",
-        "テスト生成",
-    ]
+    # 独自データのうち、プログラムコードを読み込むもの
+    cord_reading = ["コード説明", "コードレビュー・リファクタリング", "テスト生成"]
 
     with open("preset.json", encoding="utf-8") as f1:
         preset_file = json.loads(f1.read())
 
     all_genre = "\n".join(
-        [f"\t- {key} : {value}" for key, value in preset_file["genre"].items()]
+        [
+            f"\t- {key} : {value['description']}"
+            for key, value in preset_file["genre"].items()
+        ]
     )
     all_action = "\n".join(
-        [f"\t- {key} : {value}" for key, value in preset_file["action"].items()]
+        [
+            f"\t- {key} : {value['description']}"
+            for key, value in preset_file["action"].items()
+        ]
     )
 
     col1, col2, _ = st.columns(3)
@@ -307,11 +311,12 @@ def main():
             with st.form("tab2"):
                 select_preset2 = st.selectbox("アクション", preset_file["action"].keys())
                 supplement2 = st.text_area("追加指示", help="任意")
-                orginal_file = st.file_uploader("ファイル")
-                if not orginal_file:
-                    orginal_file = st.text_input(
-                        "URL (WebSite,Youtube...)", help="Youtubeは字幕付動画のみ。"
-                    )
+                select_file = st.file_uploader("ファイル")
+                youtube_url = st.text_input(
+                    "URL (WebSite,Youtube...)", help="Youtubeは字幕付動画のみ。"
+                )
+
+                orginal_file = select_file if select_file else youtube_url
 
                 reading = True
 
@@ -325,7 +330,7 @@ def main():
 #### 指定されたテーマについて、選択した形式の資料を生成するAIです。  
 
 1. ドキュメント生成 :特定のテーマについてまとめた資料を生成する
-2. 独自データ :独自のデータに対して検索、要約、レビュー、リファクタリングなどを行う
+2. 独自データ :独自のデータに対して質問、要約、レビュー、リファクタリングなどを行う
 
 #### ドキュメント生成ジャンル一覧
 
@@ -421,11 +426,11 @@ def main():
             if all(
                 [
                     orginal_file,
-                    select_preset not in special_actions,
+                    select_preset not in cord_reading,
                 ]
             ):
                 if type(orginal_file) == str:
-                    query_engine = make_query_engine(
+                    query_engine, documents = make_query_engine(
                         orginal_file,
                         llm=llm,
                         reading=False,
@@ -435,20 +440,22 @@ def main():
                     with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
                         fp = Path(tmp_file.name)
                         fp.write_bytes(orginal_file.getvalue())
-                        query_engine = make_query_engine(
+                        query_engine, documents = make_query_engine(
                             fp,
                             llm=llm,
                             reading=False,
                             name=orginal_file.name,
                         )
-            if select_preset in special_actions:
+            if select_preset in cord_reading:
                 st.session_state.alltext.append(
-                    preset_file["action"][select_preset]
+                    preset_file["action"][select_preset]["prompt"]
                     + "\n------------\n"
                     + python_minifier.minify(
                         io.StringIO(orginal_file.getvalue().decode("utf-8")).read()
                     )
                 )
+            elif orginal_file:
+                st.session_state.alltext.append(documents[0].text)
             else:
                 st.session_state.alltext.append(inputtext)
 
@@ -457,32 +464,30 @@ def main():
             new_place = st.empty()
             finish_reason = "init"
             completion = ""
-            while True:
-                if finish_reason == "init":
-                    message = "".join(st.session_state.alltext)
-                elif finish_reason == "stop":
-                    break
-                elif finish_reason == "length":
-                    message = "".join(st.session_state.alltext) + "続きを出力"
-                else:
-                    st.error(f"エラーが発生しました。finish_reason={finish_reason}")
-                    st.stop
+            if all(
+                [
+                    orginal_file,
+                    select_preset == "質問",
+                ]
+            ):
+                response = query_engine.query(instructions)
+            else:
+                while True:
+                    if finish_reason == "init":
+                        message = "".join(st.session_state.alltext)
+                    elif finish_reason == "stop":
+                        break
+                    elif finish_reason == "length":
+                        message = "".join(st.session_state.alltext) + "続きを出力"
+                    else:
+                        st.error(f"エラーが発生しました。finish_reason={finish_reason}")
+                        st.stop
 
-                if model == "gpt-3.5-turbo":
-                    message = message[-2500:]
-                else:
-                    message = message[-6500:]
+                    if model == "gpt-3.5-turbo":
+                        message = message[-2500:]
+                    else:
+                        message = message[-6500:]
 
-                response = ""
-                if all(
-                    [
-                        orginal_file,
-                        select_preset not in special_actions,
-                    ]
-                ):
-                    response = query_engine.query(message + instructions)
-                    break
-                else:
                     completion = chat(
                         text=message,
                         settings=instructions,
@@ -495,24 +500,27 @@ def main():
                         text = text.replace("続きを出力", "")
                         new_place.write(text)
 
-                st.session_state.alltext.append(text)
-                origine_name = ""
-                if orginal_file:
-                    if type(orginal_file) == str:
-                        origine_name = orginal_file
-                    else:
-                        origine_name = orginal_file.name
-                else:
-                    origine_name = select_preset
+                    st.session_state.alltext.append(text)
 
-                st.session_state.savetext.append(
-                    {
-                        "theme": inputtext,
-                        "value": text,
-                        "origine_name": origine_name,
-                    }
-                )
-                st.session_state.disabled = False
+            if orginal_file:
+                if type(orginal_file) == str:
+                    origine_name = orginal_file
+                else:
+                    origine_name = orginal_file.name
+            else:
+                origine_name = select_preset
+
+            st.session_state.savetext.append(
+                {
+                    "theme": inputtext,
+                    "value": "\n".join(st.session_state.alltext)
+                    if st.session_state.alltext
+                    else response.response,
+                    "origine_name": origine_name,
+                }
+            )
+
+            st.session_state.disabled = False
 
             t_delta = datetime.timedelta(hours=9)
             JST = datetime.timezone(t_delta, "JST")
@@ -525,9 +533,9 @@ def main():
                 st.download_button(
                     "テキストをダウンロード",
                     file_name=f"{inputtext}_{now.strftime('%Y%m%d%H%M%S')}.md",
-                    data=response.response
-                    if response
-                    else "\n".join(st.session_state.alltext),
+                    data="\n".join(st.session_state.alltext)
+                    if st.session_state.alltext
+                    else response.response,
                     mime="text/plain",
                     key="current_text",
                 )
