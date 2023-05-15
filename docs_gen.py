@@ -444,6 +444,7 @@ def main():
                         reading=False,
                         name=orginal_file,
                     )
+                    file_text = documents[0].text
                 else:
                     with tempfile.NamedTemporaryFile(delete=False) as tmp_file:
                         fp = Path(tmp_file.name)
@@ -454,8 +455,9 @@ def main():
                             reading=False,
                             name=orginal_file.name,
                         )
+                        file_text = documents[0].text
             if select_preset in cord_reading:
-                st.session_state.alltext.append(
+                file_text = (
                     preset_file["action"][select_preset]["prompt"]
                     + "\n------------\n"
                     + python_minifier.minify(
@@ -464,6 +466,7 @@ def main():
                 )
 
             text = ""
+
             if all(
                 [
                     orginal_file,
@@ -472,7 +475,7 @@ def main():
             ):
                 response = query_engine.query(instructions)
             else:
-                prompt = inputtext + documents[0].text if orginal_file else inputtext
+                prompt = inputtext + file_text if orginal_file else inputtext
                 st.session_state.alltext.append(prompt)
                 finish_reason = "init"
                 new_place = st.empty()
