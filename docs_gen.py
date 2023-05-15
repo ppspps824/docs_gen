@@ -228,6 +228,7 @@ def create_messages(
         instructions = f"""
 あなたは{inputtext}の専門家です。
 作成に当たっては以下に厳密に従ってください。
+- 回答は日本語で行う。
 - 文字数は{input_gen_length}とする。
 - 指示の最後に続きを出力と送られた場合は、続きを出力の前の文章の続きを出力する。
 - step by stepで複数回検討を行い、その中で一番優れていると思う結果を出力する。
@@ -290,7 +291,7 @@ def main():
             with st.form("tab1"):
                 inputtext = st.text_input("テーマ", help="生成したいドキュメントのテーマを記入。必須項目。")
                 supplement1 = st.text_area(
-                    "追加指示", help="取り込んで欲しい内容、取り込んで欲しくない内容、その他指示を記入"
+                    "入力", help="取り込んで欲しい内容、取り込んで欲しくない内容、その他指示を記入"
                 )
                 select_preset1 = st.selectbox("ジャンル", preset_file["genre"].keys())
                 input_gen_length = st.number_input(
@@ -310,7 +311,7 @@ def main():
         with tab2:
             with st.form("tab2"):
                 select_preset2 = st.selectbox("アクション", preset_file["action"].keys())
-                supplement2 = st.text_area("追加指示", help="任意")
+                supplement2 = st.text_area("入力", help="任意")
                 select_file = st.file_uploader("ファイル")
                 youtube_url = st.text_input(
                     "URL (WebSite,Youtube...)", help="Youtubeは字幕付動画のみ。"
@@ -357,9 +358,10 @@ def main():
         now = datetime.datetime.now(JST)
         with st.expander(f'{info["theme"]} : {info["origine_name"]}'):
             if info["origine_name"]:
-                data = f"## {info['theme']} : {info['origine_name']}\n{info['value']}"
+                data = f"## {info['theme']} : {info['origine_name']}\n入力 : {info['supplement']}\n---\n{info['value']}"
             else:
                 data = info["theme"] + "\n" + info["value"]
+
             st.download_button(
                 "テキストをダウンロード",
                 file_name=f"{info['theme']}_{now.strftime('%Y%m%d%H%M%S')}.md",
@@ -368,17 +370,21 @@ def main():
                 key=f"old_text{no}",
             )
             if info["origine_name"]:
-                st.markdown(
-                    f"## {info['theme']} : {info['origine_name']}\n{info['value']}"
-                )
+                st.markdown(f"## {info['theme']} : {info['origine_name']}")
+                st.markdown(f"入力 : {info['supplement']}")
+                st.markdown("---")
+                st.markdown(f"{info['value']}")
+
             else:
                 st.markdown(f"## {info['theme']}")
-            st.markdown(info["value"])
+                st.markdown(info["value"])
 
     if any([submit1, submit2]):
+        st.session_state.alltext = []
         if submit1:
             supplement = supplement1
             select_preset = select_preset1
+            orginal_file = ""
             if not inputtext:
                 message_place.error("テーマを入力してください", icon="🥺")
                 st.stop()
@@ -397,7 +403,6 @@ def main():
             preset_file,
         )
 
-        st.session_state.alltext = []
         st.markdown("---")
         if orginal_file:
             if type(orginal_file) == str:
@@ -412,7 +417,6 @@ def main():
         spinner_lottie_json = load_lottieurl(lottie_url)
         with st_lottie_spinner(spinner_lottie_json, height=200):
             st.markdown("---")
-            st.session_state.alltext = []
             llm = ChatOpenAI(
                 temperature=0,
                 model_name=model,
@@ -454,16 +458,8 @@ def main():
                         io.StringIO(orginal_file.getvalue().decode("utf-8")).read()
                     )
                 )
-            elif orginal_file:
-                st.session_state.alltext.append(documents[0].text)
-            else:
-                st.session_state.alltext.append(inputtext)
 
             text = ""
-
-            new_place = st.empty()
-            finish_reason = "init"
-            completion = ""
             if all(
                 [
                     orginal_file,
@@ -472,6 +468,11 @@ def main():
             ):
                 response = query_engine.query(instructions)
             else:
+                prompt = inputtext + documents[0].text if orginal_file else inputtext
+                st.session_state.alltext.append(prompt)
+                finish_reason = "init"
+                new_place = st.empty()
+
                 while True:
                     if finish_reason == "init":
                         message = "".join(st.session_state.alltext)
@@ -513,14 +514,11 @@ def main():
             st.session_state.savetext.append(
                 {
                     "theme": inputtext,
-                    "value": "\n".join(st.session_state.alltext)
-                    if st.session_state.alltext
-                    else response.response,
+                    "value": text if text else response.response,
+                    "supplement": supplement,
                     "origine_name": origine_name,
                 }
             )
-
-            st.session_state.disabled = False
 
             t_delta = datetime.timedelta(hours=9)
             JST = datetime.timezone(t_delta, "JST")
@@ -533,9 +531,7 @@ def main():
                 st.download_button(
                     "テキストをダウンロード",
                     file_name=f"{inputtext}_{now.strftime('%Y%m%d%H%M%S')}.md",
-                    data="\n".join(st.session_state.alltext)
-                    if st.session_state.alltext
-                    else response.response,
+                    data=text if text else response.response,
                     mime="text/plain",
                     key="current_text",
                 )
