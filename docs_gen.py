@@ -261,7 +261,6 @@ def create_messages(
 {supplement}
 {prompt}
             """
-
     return instructions
 
 
@@ -389,11 +388,22 @@ def main():
                 data = f"## {info['theme']} : {info['origine_name']}\n入力 : {info['supplement']}\n---\n{info['value']}"
             else:
                 data = info["theme"] + "\n" + info["value"]
+            marp = """
+---
+marp: true
+theme: normal
+paginate: true
+class: invert
+---
+<!--
+headingDivider: 2
+-->
 
+            """
             st.download_button(
                 "テキストをダウンロード",
                 file_name=f"{info['theme']}_{now.strftime('%Y%m%d%H%M%S')}.md",
-                data=data,
+                data=marp + data if select_preset == "プレゼンテーションスライド作成" else data,
                 mime="text/plain",
                 key=f"old_text{no}",
             )
