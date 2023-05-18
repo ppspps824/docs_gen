@@ -15,12 +15,19 @@ import streamlit as st
 from langchain.agents import AgentType, initialize_agent, load_tools
 from langchain.callbacks.base import BaseCallbackManager
 from langchain.callbacks.streamlit import StreamlitCallbackHandler
+from langchain.chains import QAGenerationChain
 from langchain.chat_models import ChatOpenAI
 from langchain.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
     SystemMessagePromptTemplate,
 )
+from langchain.prompts.chat import (
+    ChatPromptTemplate,
+    HumanMessagePromptTemplate,
+    SystemMessagePromptTemplate,
+)
+from langchain.text_splitter import RecursiveCharacterTextSplitter
 from llama_index import (
     GPTVectorStoreIndex,
     PromptHelper,
@@ -40,6 +47,17 @@ class WrapStreamlitCallbackHandler(StreamlitCallbackHandler):
         self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any
     ) -> None:
         pass
+
+
+def chunk_splitter(text):
+    # チャンクに分割
+    text_splitter = RecursiveCharacterTextSplitter(
+        separators=["\n\n", "\n", "。", "、", " ", ""],
+        chunk_size=500,  # チャンクの最大トークン数
+        chunk_overlap=20,  # チャンクオーバーラップのトークン数
+    )
+    texts = text_splitter.split_text(text)
+    return texts
 
 
 def load_lottieurl(url: str):
@@ -85,6 +103,10 @@ def make_query_engine(data, llm, reading, name):
         elif any([".mp3" in check_name, ".mp4" in check_name]):
             AudioTranscriber = download_loader("AudioTranscriber")
             loader = AudioTranscriber()
+            documents = loader.load_data(file=data)
+        elif ".csv" in check_name:
+            PandasCSVReader = download_loader("PandasCSVReader")
+            loader = PandasCSVReader()
             documents = loader.load_data(file=data)
         elif "youtu" in check_name:
             YoutubeTranscriptReader = download_loader("YoutubeTranscriptReader")
@@ -217,7 +239,7 @@ def create_messages(
 ):
     if select_preset == "質問":
         instructions = f"""
-ルール:Markdownで出力。日本語で出力。{supplement} \n{preset_file["action"][select_preset]["prompt"]}
+ルール:Markdownで出力。日本語で出力。データの可視化にはplotlyを用いる。UMLを表現する際はmermaid.js形式で出力する。 {supplement} \n{preset_file["action"][select_preset]["prompt"]}
 """
     else:
         prompt = (
@@ -233,6 +255,8 @@ def create_messages(
 - 指示の最後に続きを出力と送られた場合は、続きを出力の前の文章の続きを出力する。
 - step by stepで複数回検討を行い、その中で一番優れていると思う結果を出力する。
 - 出力はMarkdownとする。
+- UMLを表現する際はmermaid.js形式で出力する。
+- データの可視化にはplotlyを用いる。
 - 生成物以外は出力しない（例えば生成物に対するコメントや説明など）
 {supplement}
 {prompt}
@@ -470,10 +494,48 @@ def main():
             if all(
                 [
                     orginal_file,
+                    select_preset == "Q&A生成",
+                ]
+            ):
+                # QAの生成
+                templ1 = """You are a smart assistant designed to help high school teachers come up with reading comprehension questions.
+                Given a piece of text, you must come up with a question and answer pair that can be used to test a student's reading comprehension abilities.
+                When coming up with this question/answer pair, you must respond in the following format:
+                ```
+                {{
+                    "question": "$YOUR_QUESTION_HERE",
+                    "answer": "$THE_ANSWER_HERE"
+                }}
+                ```
+
+                Everything between the ``` must be valid json.
+                answer in Japanese.
+                """
+                templ2 = """Please come up with a question/answer pair, in the specified JSON format, for the following text:
+                ----------------
+                {text}"""
+
+                # プロンプトテンプレートの準備
+                prompt = ChatPromptTemplate.from_messages(
+                    [
+                        SystemMessagePromptTemplate.from_template(templ1),
+                        HumanMessagePromptTemplate.from_template(templ2),
+                    ]
+                )
+                texts = chunk_splitter(file_text)
+                chain = QAGenerationChain.from_llm(llm=llm, prompt=prompt)
+                for value in texts:
+                    st.write(chain.run(value))
+                text = "\n".join(texts)
+
+            elif all(
+                [
+                    orginal_file,
                     select_preset == "質問",
                 ]
             ):
                 response = query_engine.query(instructions)
+
             else:
                 prompt = inputtext + file_text if orginal_file else inputtext
                 st.session_state.alltext.append(prompt)
