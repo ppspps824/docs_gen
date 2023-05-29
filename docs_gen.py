@@ -555,8 +555,16 @@ headingDivider: 2
                     select_preset == "要約",
                 ]
             ):
-                prompt_template = f"""Write a concise summary of the following:
-
+                prompt_template = f"""
+Convert key points and content into a short summary.
+Be sure to adhere to the following restrictions
+- Output the most distinctive claims first.
+- Do not leave out important keywords.
+- Do not change the meaning of the text.
+- Do not use fictitious expressions or words.
+- Do not change the numerical values in the text.
+- List key points.
+:
 
 {{text}}
 
