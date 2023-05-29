@@ -240,9 +240,17 @@ def create_messages(
     orginal_file,
     preset_file,
 ):
-    if select_preset == "質問":
+    if select_preset in ["質問", "評価"]:
         instructions = f"""
-ルール:Markdownで出力。日本語で出力。データの可視化にはplotlyを用いる。UMLを表現する際はmermaid.js形式で出力する。 {supplement} \n{preset_file["action"][select_preset]["prompt"]}
+{preset_file["action"][select_preset]["prompt"]}
+
+作成に当たっては以下に厳密に従ってください。
+- Markdownで出力。
+- 日本語で出力。
+- データの可視化にはplotlyを用いる。
+- UMLを表現する際はmermaid.js形式で出力する。
+
+{supplement}
 """
     else:
         prompt = (
@@ -252,6 +260,8 @@ def create_messages(
         )
         instructions = f"""
 あなたは{inputtext}の専門家です。
+{prompt}
+
 作成に当たっては以下に厳密に従ってください。
 - 回答は日本語で行う。
 - 文字数は{input_gen_length}とする。
@@ -262,7 +272,6 @@ def create_messages(
 - データの可視化にはplotlyを用いる。
 - 生成物以外は出力しない（例えば生成物に対するコメントや説明など）
 {supplement}
-{prompt}
             """
     return instructions
 
