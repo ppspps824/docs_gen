@@ -12,11 +12,14 @@ import openai
 import python_minifier
 import requests
 import streamlit as st
+from langchain import PromptTemplate
 from langchain.agents import AgentType, initialize_agent, load_tools
 from langchain.callbacks.base import BaseCallbackManager
 from langchain.callbacks.streamlit import StreamlitCallbackHandler
 from langchain.chains import QAGenerationChain
+from langchain.chains.summarize import load_summarize_chain
 from langchain.chat_models import ChatOpenAI
+from langchain.docstore.document import Document
 from langchain.prompts import (
     ChatPromptTemplate,
     HumanMessagePromptTemplate,
@@ -113,8 +116,8 @@ def make_query_engine(data, llm, reading, name):
             loader = YoutubeTranscriptReader()
             documents = loader.load_data(ytlinks=[name])
         elif "http" in check_name:
-            AsyncWebPageReader = download_loader("AsyncWebPageReader")
-            loader = AsyncWebPageReader()
+            BeautifulSoupWebReader = download_loader("BeautifulSoupWebReader")
+            loader = BeautifulSoupWebReader()
             documents = loader.load_data(urls=[name])
         # elif ext in [".png", ".jpeg", ".jpg"]:
         #     ImageCaptionReader = download_loader("ImageCaptionReader")
@@ -545,6 +548,27 @@ headingDivider: 2
                 ]
             ):
                 response = query_engine.query(instructions)
+
+            elif all(
+                [
+                    orginal_file,
+                    select_preset == "要約",
+                ]
+            ):
+                prompt_template = f"""Write a concise summary of the following:
+
+
+{{text}}
+
+{supplement}
+CONCISE SUMMARY IN JAPANESE:"""
+                PROMPT = PromptTemplate(
+                    template=prompt_template, input_variables=["text"]
+                )
+                texts = chunk_splitter(file_text)
+                chain = load_summarize_chain(llm, chain_type="stuff", prompt=PROMPT)
+                docs = [Document(page_content=t) for t in texts[:3]]
+                text = chain.run(docs)
 
             else:
                 prompt = inputtext + file_text if orginal_file else inputtext
