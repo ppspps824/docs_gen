@@ -660,8 +660,9 @@ if __name__ == "__main__":
                 footer {visibility: hidden;}
                 </style>
                 """
-    # st.markdown(hide_streamlit_style, unsafe_allow_html=True)
+    st.markdown(hide_streamlit_style, unsafe_allow_html=True)
 
+    os.environ["OPENAI_API_KEY"] = st.secrets["OPEN_AI_KEY"]
     openai.api_key = st.secrets["OPEN_AI_KEY"]
     # os.environ["GOOGLE_API_KEY"] = st.secrets["GOOGLE_API_KEY"]
     # os.environ["GOOGLE_CSE_ID"] = st.secrets["GOOGLE_CSE_ID"]
