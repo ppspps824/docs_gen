@@ -1,6 +1,6 @@
 openai
 langchain
-llama_index
+llama_index==0.6.27
 faiss-cpu
 streamlit-lottie
 google-api-python-client
