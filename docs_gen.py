@@ -239,8 +239,11 @@ def create_messages(
     orginal_file,
     preset_file,
 ):
-    with open(f"prompts/{select_preset}.md", "r", encoding="utf-8") as f:
-        prompt = f.read()
+    try:
+        with open(f"prompts/{select_preset}.md", "r", encoding="utf-8") as f:
+            prompt = f.read()
+    except:
+        prompt = ""
 
     if select_preset in ["質問", "評価"]:
         instructions = prompt + supplement
