@@ -241,17 +241,17 @@ def create_messages(
 ):
     try:
         with open(f"prompts/{select_preset}.md", "r", encoding="utf-8") as f:
-            prompt = f.read()
+            prompt_text = f.read()
     except:
-        prompt = ""
+        prompt_text = ""
 
     if select_preset in ["質問", "評価"]:
-        instructions = prompt + supplement
+        instructions = prompt_text + supplement
 
     else:
         instructions = f"""
 あなたは{inputtext}の専門家です。
-{prompt}
+{prompt_text}
 
 作成に当たっては以下に厳密に従ってください。
 - 回答は日本語で行う。
