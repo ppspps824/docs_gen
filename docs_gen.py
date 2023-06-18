@@ -71,7 +71,6 @@ def load_lottieurl(url: str):
 
 
 def make_query_engine(data, llm, reading, name):
-
     check_name = name.lower()
     if reading:
         # インデックスの読み込み
@@ -240,24 +239,13 @@ def create_messages(
     orginal_file,
     preset_file,
 ):
+    with open(f"prompts/{select_preset}.md", "r", encoding="utf-8") as f:
+        prompt = f.read()
+
     if select_preset in ["質問", "評価"]:
-        instructions = f"""
-{preset_file["action"][select_preset]["prompt"]}
+        instructions = prompt + supplement
 
-作成に当たっては以下に厳密に従ってください。
-- Markdownで出力。
-- 日本語で出力。
-- データの可視化にはplotlyを用いる。
-- UMLを表現する際はmermaid.js形式で出力する。
-
-{supplement}
-"""
     else:
-        prompt = (
-            preset_file["action"][select_preset]["prompt"]
-            if orginal_file
-            else preset_file["genre"][select_preset]["prompt"]
-        )
         instructions = f"""
 あなたは{inputtext}の専門家です。
 {prompt}
@@ -504,7 +492,7 @@ headingDivider: 2
                         file_text = documents[0].text
             if select_preset in cord_reading:
                 file_text = (
-                    preset_file["action"][select_preset]["prompt"]
+                    prompt
                     + "\n------------\n"
                     + python_minifier.minify(
                         io.StringIO(orginal_file.getvalue().decode("utf-8")).read()
