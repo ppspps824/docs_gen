@@ -495,7 +495,7 @@ headingDivider: 2
                         file_text = documents[0].text
             if select_preset in cord_reading:
                 file_text = (
-                    prompt
+                    instructions
                     + "\n------------\n"
                     + python_minifier.minify(
                         io.StringIO(orginal_file.getvalue().decode("utf-8")).read()
