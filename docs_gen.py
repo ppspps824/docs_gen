@@ -311,7 +311,8 @@ def main():
     message_place = st.empty()
 
     with st.sidebar:
-        model = st.selectbox("モデルを選択", ["gpt-3.5-turbo", "gpt-4"])
+        models = ["gpt-4-1106-preview", "gpt-3.5-turbo", "gpt-4"]
+        model = st.selectbox("モデルを選択", models)
         tab1, tab2 = st.tabs(["ドキュメント生成", "独自データ"])
         with tab1:
             with st.form("tab1"):
